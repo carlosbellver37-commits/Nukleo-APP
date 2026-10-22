@@ -1,20 +1,12 @@
 rules_version = '2';
 
-// Solo las personas de esta lista pueden leer o escribir datos de nukleo.
-// Cambia los dos emails por los vuestros (los mismos con los que entráis al panel).
+// Solo las cuentas con sesión iniciada pueden leer o escribir datos de nukleo.
+// El registro libre está desactivado en Firebase Authentication, así que las únicas
+// cuentas que existen son las que creáis vosotros en Authentication → Usuarios.
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function esDelEquipo() {
-      return request.auth != null
-        && request.auth.token.email in [
-          'tu-email@ejemplo.com',
-          'email-de-tu-socio@ejemplo.com'
-        ];
-    }
-
     match /{document=**} {
-      allow read, write: if esDelEquipo();
+      allow read, write: if request.auth != null;
     }
   }
 }

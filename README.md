@@ -1,5 +1,7 @@
 # nukleo.
 
+> Proyecto de Firebase: `nukleo-f31b5` (Firestore en `eur3`, Europa). La configuración ya está en `config.js`.
+
 Panel interno de nukleo para llevar las membresías: clientes y sus cuentas, pipeline de ventas, calendario de reuniones, cobros del mes, objetivo mensual e importación del extracto de Revolut.
 
 Es una web estática (un solo `index.html`) que guarda los datos en **Firebase** (Firestore) y pide **email y contraseña** para entrar. Se publica en **Vercel** directamente desde este repositorio de GitHub.
@@ -21,10 +23,9 @@ Es una web estática (un solo `index.html`) que guarda los datos en **Firebase**
 
 ### 2. Proteger los datos (reglas de Firestore)
 
-1. Abre `firestore.rules` y cambia los dos emails de ejemplo por los vuestros, los mismos que usasteis en el paso anterior.
-2. En Firebase, **Firestore Database → Reglas**, borra lo que haya, pega el contenido de `firestore.rules` y pulsa **Publicar**.
+En Firebase, **Firestore Database → Reglas**, pega el contenido de `firestore.rules` y pulsa **Publicar**.
 
-Con estas reglas, solo vosotros dos podéis leer o escribir datos. Cualquier otra persona, aunque tenga el enlace, solo verá la pantalla de acceso.
+Las reglas solo dejan leer y escribir a quien haya iniciado sesión. Como el registro libre está desactivado (paso 1), las únicas cuentas que existen son las que creáis vosotros en **Authentication → Usuarios**. Cualquier otra persona, aunque tenga el enlace, solo verá la pantalla de acceso.
 
 ### 3. Conectar la web con Firebase
 
@@ -75,6 +76,6 @@ Para hacer una copia de seguridad, usa **Firestore → Importar/Exportar** en la
 ## Si algo falla
 
 - **"Falta la configuración de Firebase"**: `config.js` aún tiene los valores de ejemplo.
-- **"Tu cuenta no tiene permiso"**: tu email no está en `firestore.rules`, o las reglas no se han publicado.
+- **"Tu cuenta no tiene permiso"**: las reglas de `firestore.rules` no se han publicado en Firebase.
 - **No puedo entrar desde la dirección de Vercel**: falta añadir el dominio en *Dominios autorizados* (paso 4.5).
 - **He olvidado la contraseña**: en la pantalla de acceso, escribe tu email y pulsa *He olvidado la contraseña*.
