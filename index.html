@@ -492,7 +492,7 @@ const collected=m=>paysInMonth(m).reduce((a,p)=>a+(+p.amount||0),0);
 const expected=m=>activeFor(m).reduce((a,c)=>a+(+c.fee||0),0);
 function dueRows(m){
   const ids=new Set(activeFor(m).map(c=>c.id));
-  paysInMonth(m).forEach(p=>ids.add(p.clientId));
+  paysInMonth(m).forEach(p=>{if(p.kind!=='setup')ids.add(p.clientId)});
   return [...ids].map(id=>clientById(id)).filter(Boolean).sort((a,b)=>(+a.dueDay||31)-(+b.dueDay||31)||a.name.localeCompare(b.name));
 }
 function payStatus(c,m){
@@ -779,7 +779,7 @@ function vClientes(){
     .map(x=>`<button class="fchip" data-act="stageF" data-s="${x.k}" aria-pressed="${x.k===f}">${x.k?dot(x.k):''}${esc(x.l)} <span class="num">${x.n}</span></button>`).join('');
   const cards=list.length?list.map(c=>{
     const nx=S.events.filter(e=>e.clientId===c.id&&e.date>=t).sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')))[0];
-    const st=c.stage==='activo'?payStatus(c,cur):null;
+    const st=activeFor(cur).some(x=>x.id===c.id)?payStatus(c,cur):null;
     return `<button class="acard" data-act="edit" data-id="${c.id}"><span class="who">${av(c.name)}<span style="min-width:0;display:grid"><span class="t">${esc(c.name)}</span><span class="m">${esc([c.company,c.sector].filter(Boolean).join(' · ')||c.contact||'Sin datos de empresa')}</span></span></span>
     <span class="arow">${stagePill(c.stage)}${st?`<span class="pill ${st.k}">${st.l}</span>`:''}</span>
     <span class="arow foot"><span class="num">${c.fee?fmtEur(c.fee)+'<span class="muted">/mes</span>':'<span class="muted">Sin cuota</span>'}${+c.setupPrice>0?'<span class="muted"> · venta '+fmtEur(c.setupPrice)+'</span>':''}</span>${nx?`<span class="chip">${fmtDate(nx.date)}${nx.time?' · '+esc(nx.time):''}</span>`:''}</span></button>`}).join('')
@@ -803,7 +803,7 @@ function vCliente(){
   const cell=m=>{if(payFor(c.id,m))return 'paid';if(c.stage!=='activo'||(startM&&m<startM))return 'none';if(m<cur||payStatus(c,m).k==='bad')return 'late';return m===cur?'due':'none'};
   const states=months.map(m=>({m,s:cell(m)})),late=states.filter(x=>x.s==='late').length;
   const lbl={paid:'Pagado',late:'Atrasado',due:'Pendiente',none:'Sin cuota'};
-  const curSt=c.stage==='activo'?payStatus(c,cur):null;
+  const curSt=activeFor(cur).some(x=>x.id===c.id)?payStatus(c,cur):null;
   const evs=S.events.filter(e=>e.clientId===c.id).sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
   const up=evs.filter(e=>e.date>=t),past=evs.filter(e=>e.date<t).reverse().slice(0,5);
   const evRow=(e,cls)=>`<button class="ag ${cls}" data-act="evEdit" data-id="${e.id}"><span class="tm num">${fmtDate(e.date)}${e.time?'<br>'+esc(e.time):''}</span><span style="min-width:0;display:grid"><span class="t">${esc(e.title)}</span><span class="m">${esc([e.type,e.place].filter(Boolean).join(' · '))}</span></span></button>`;
