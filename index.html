@@ -492,7 +492,7 @@ const collected=m=>paysInMonth(m).reduce((a,p)=>a+(+p.amount||0),0);
 const expected=m=>activeFor(m).reduce((a,c)=>a+(+c.fee||0),0);
 function dueRows(m){
   const ids=new Set(activeFor(m).map(c=>c.id));
-  paysInMonth(m).forEach(p=>{if(p.kind!=='setup')ids.add(p.clientId)});
+  paysInMonth(m).forEach(p=>{if(!p.kind)ids.add(p.clientId)});
   return [...ids].map(id=>clientById(id)).filter(Boolean).sort((a,b)=>(+a.dueDay||31)-(+b.dueDay||31)||a.name.localeCompare(b.name));
 }
 function payStatus(c,m){
@@ -678,8 +678,12 @@ function vPipeline(){
 }
 
 function salesThisMonth(m){
-  const ps=paysInMonth(m).filter(p=>p.kind==='setup');if(!ps.length)return '';
-  return `<div class="label" style="margin:18px 0 6px">Ventas cobradas este mes</div><div class="list">${ps.map(p=>{const c=clientById(p.clientId);return `<div class="li"><div class="who">${av(c?c.name:'?')}<div style="min-width:0"><div class="t">${esc(c?c.name:'Cliente eliminado')}</div><div class="m">Pago único · ${fmtDate(p.date)} · ${esc(p.method||'')}</div></div></div><span class="num" style="font-weight:600">${fmtEur(p.amount)}</span></div>`}).join('')}</div>`;
+  const ps=paysInMonth(m).filter(p=>p.kind==='setup'||p.kind==='extra').sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const pend=S.clients.filter(c=>c.stage!=='perdido'&&projectLeft(c)>0);
+  let h='';
+  if(ps.length)h+=`<div class="label" style="margin:18px 0 6px">Pagos sueltos cobrados este mes</div><div class="list">${ps.map(p=>{const c=clientById(p.clientId);return `<div class="li"><div class="who">${av(c?c.name:'?')}<div style="min-width:0"><div class="t">${esc(c?c.name:'Cliente eliminado')}</div><div class="m">${esc(payLabel(p))} · ${fmtDate(p.date)}${p.method?' · '+esc(p.method):''}</div></div></div><span class="num" style="font-weight:600">${fmtEur(p.amount)}</span></div>`}).join('')}</div>`;
+  if(pend.length)h+=`<div class="label" style="margin:18px 0 6px">Proyectos con pago pendiente</div><div class="list">${pend.map(c=>`<div class="li"><button class="btn ghost" style="padding:0;text-align:left;min-width:0" data-act="edit" data-id="${c.id}"><span class="who">${av(c.name)}<span style="min-width:0;display:grid"><span class="t" style="color:var(--ink)">${esc(c.name)}</span><span class="m">Faltan ${fmtEur(projectLeft(c))} de ${fmtEur(c.setupPrice)}${c.nextDate?' · '+fmtDate(c.nextDate):''}</span></span></span></button><button class="btn ok sm" data-act="oneOff" data-id="${c.id}" data-k="setup" ${ro()}>+ Pago</button></div>`).join('')}</div>`;
+  return h;
 }
 function vCobros(){
   const m=S.month,rows=dueRows(m);
@@ -782,17 +786,35 @@ function vClientes(){
     const st=activeFor(cur).some(x=>x.id===c.id)?payStatus(c,cur):null;
     return `<button class="acard" data-act="edit" data-id="${c.id}"><span class="who">${av(c.name)}<span style="min-width:0;display:grid"><span class="t">${esc(c.name)}</span><span class="m">${esc([c.company,c.sector].filter(Boolean).join(' · ')||c.contact||'Sin datos de empresa')}</span></span></span>
     <span class="arow">${stagePill(c.stage)}${st?`<span class="pill ${st.k}">${st.l}</span>`:''}</span>
-    <span class="arow foot"><span class="num">${c.fee?fmtEur(c.fee)+'<span class="muted">/mes</span>':'<span class="muted">Sin cuota</span>'}${+c.setupPrice>0?'<span class="muted"> · venta '+fmtEur(c.setupPrice)+'</span>':''}</span>${nx?`<span class="chip">${fmtDate(nx.date)}${nx.time?' · '+esc(nx.time):''}</span>`:''}</span></button>`}).join('')
+    <span class="arow foot"><span class="num">${c.fee?fmtEur(c.fee)+'<span class="muted">/mes</span>':'<span class="muted">Sin cuota</span>'}${+c.setupPrice>0?'<span class="muted"> · proyecto '+fmtEur(c.setupPrice)+(projectLeft(c)>0?' (faltan '+fmtEur(projectLeft(c))+')':'')+'</span>':''}</span>${nx?`<span class="chip">${fmtDate(nx.date)}${nx.time?' · '+esc(nx.time):''}</span>`:''}</span></button>`}).join('')
     :`<div class="empty">${emptyIcon}Ningún cliente coincide con la búsqueda.</div>`;
   return `<section class="panel"><div class="ph"><h2>Clientes</h2><span class="sub">${list.length} de ${S.clients.length} · toca una empresa para abrir su cuenta</span></div>
   <div class="toolbar"><label class="search">${SEARCH_ICON}<input type="search" id="search" placeholder="Buscar empresa, persona, CIF o sector" value="${esc(S.search)}" aria-label="Buscar"></label></div>
   <div class="fchips">${chips}</div><div class="agrid">${cards}</div></section>`;
 }
-const setupPay=id=>S.payments[id+'_setup'];
+const oneOffs=cid=>Object.values(S.payments).filter(p=>p.clientId===cid&&(p.kind==='setup'||p.kind==='extra'));
+const projectPaid=cid=>oneOffs(cid).filter(p=>p.kind==='setup').reduce((a,p)=>a+(+p.amount||0),0);
+const projectLeft=c=>Math.max(0,(+c.setupPrice||0)-projectPaid(c.id));
+const payLabel=p=>p.kind==='setup'?(p.concept||'Pago del proyecto'):p.kind==='extra'?(p.concept||'Extra'):null;
 function saleBox(c){
-  if(!(+c.setupPrice>0))return '';
-  const p=setupPay(c.id);
-  return `<div class="li" style="background:var(--raise);border-radius:10px;padding:10px 12px;margin-bottom:14px;border:0"><div style="min-width:0"><div class="t">Venta · ${fmtEur(c.setupPrice)}</div><div class="m">${p?`Cobrada el ${fmtDate(p.date)} · ${esc(p.method||'')}`:'Pago único pendiente de cobro'}</div></div>${p?`<button class="btn ghost sm" data-act="setupUnpay" data-id="${c.id}" ${ro()}>Deshacer</button>`:`<button class="btn ok sm" data-act="setupPay" data-id="${c.id}" ${ro()}>✓ Cobrada</button>`}</div>`;
+  const price=+c.setupPrice||0,paid=projectPaid(c.id),left=projectLeft(c);
+  const top=price>0?`<div class="li" style="background:var(--raise);border-radius:10px;padding:10px 12px;margin-bottom:10px;border:0"><div style="min-width:0"><div class="t">Proyecto · ${fmtEur(price)}</div><div class="m">${left>0?`Cobrado ${fmtEur(paid)} · faltan <b style="color:var(--ink)">${fmtEur(left)}</b>`:'Cobrado entero'}</div></div>${left>0?'<span class="pill warn">Pendiente</span>':'<span class="pill ok">Cobrado</span>'}</div>`:'';
+  return top+`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><button class="btn sm" data-act="oneOff" data-id="${c.id}" data-k="setup" ${ro()}>+ Pago del proyecto</button><button class="btn sm" data-act="oneOff" data-id="${c.id}" data-k="extra" ${ro()}>+ Cambio / extra</button></div>`;
+}
+function openOneOff(cid,kind){
+  const c=clientById(cid);if(!c)return;const left=projectLeft(c);
+  document.getElementById('modalRoot').innerHTML=`<div class="overlay" data-act="close"><form class="drawer" id="oneOffForm" data-id="${cid}">
+    <div class="dh"><div class="who">${av(c.name)}<h2>Registrar pago · ${esc(c.name)}</h2></div><button type="button" class="btn ghost" data-act="close" aria-label="Cerrar">✕</button></div>
+    <div class="fgrid">
+      <label class="field"><span>Tipo</span><select id="o_kind" name="kind"><option value="setup" ${kind==='setup'?'selected':''}>Pago del proyecto</option><option value="extra" ${kind==='extra'?'selected':''}>Cambio / extra</option></select></label>
+      <label class="field"><span>Importe (€) *</span><input id="o_amount" name="amount" type="number" step="0.01" min="0" required value="${kind==='setup'&&left>0?left:''}"></label>
+      <label class="field full"><span>Concepto</span><input id="o_concept" name="concept" placeholder="Anticipo, pago final, cambio de carta…" value="${kind==='setup'?(left>0&&left<(+c.setupPrice||0)?'Pago final':''):''}"></label>
+      <label class="field"><span>Fecha *</span><input id="o_date" name="date" type="date" required value="${todayISO()}"></label>
+      <label class="field"><span>Vía</span><select id="o_method" name="method"><option>Revolut</option><option>Transferencia</option><option>Bizum</option><option>Efectivo</option><option>Otro</option></select></label>
+    </div>
+    <div class="dactions"><span></span><div style="display:flex;gap:8px"><button type="button" class="btn ghost" data-act="close">Cancelar</button><button class="btn primary" type="submit" ${ro()}>Guardar pago</button></div></div>
+  </form></div>`;
+  setTimeout(()=>{const el=document.getElementById('o_amount');el&&el.focus()},30);
 }
 function vCliente(){
   const c=clientById(S.clientId);if(!c){S.tab='clientes';return vClientes()}
@@ -831,7 +853,7 @@ function vCliente(){
       <section class="panel"><div class="ph"><h2>Pagos</h2><span class="sub">últimos 12 meses</span></div>${saleBox(c)}
         <div class="mgrid">${states.map(x=>`<span class="mc ${x.s}" title="${esc(mLabel(x.m))}: ${lbl[x.s]}"><span>${esc(mLabel(x.m,true))}</span><i></i></span>`).join('')}</div>
         <div class="mlegend"><span><i style="background:var(--ink)"></i>Pagado</span><span><i style="background:repeating-linear-gradient(-45deg,var(--ink) 0 2px,transparent 2px 5px);box-shadow:inset 0 0 0 1.5px var(--ink)"></i>Atrasado</span><span><i style="box-shadow:inset 0 0 0 1.5px var(--ink)"></i>Pendiente</span></div>
-        <div class="list" style="margin-top:14px">${pays.length?pays.slice(0,12).map(p=>`<div class="li"><div style="min-width:0"><div class="t">${p.kind==='setup'?'Venta · pago único':esc(mLabel(p.month))}</div><div class="m">${fmtDate(p.date)} · ${esc(p.method||'')}${p.by?` · por <span data-uid="${esc(p.by)}">…</span>`:''}</div></div><span class="num" style="font-weight:600">${fmtEur(p.amount)}</span></div>`).join(''):`<div class="empty">${emptyIcon}Todavía no hay pagos registrados.</div>`}</div></section>
+        <div class="list" style="margin-top:14px">${pays.length?pays.slice(0,20).map(p=>`<div class="li"><div style="min-width:0"><div class="t">${payLabel(p)?esc(payLabel(p)):esc(mLabel(p.month))}</div><div class="m">${fmtDate(p.date)} · ${esc(p.method||'')}${p.by?` · por <span data-uid="${esc(p.by)}">…</span>`:''}</div></div><span class="arow" style="gap:6px;flex-wrap:nowrap"><span class="num" style="font-weight:600">${fmtEur(p.amount)}</span>${p.kind?`<button class="btn ghost sm" data-act="delPay" data-pid="${esc(p.id)}" aria-label="Quitar pago" ${ro()}>Quitar</button>`:''}</span></div>`).join(''):`<div class="empty">${emptyIcon}Todavía no hay pagos registrados.</div>`}</div></section>
       <section class="panel"><div class="ph"><h2>Reuniones</h2><button class="btn sm" data-act="evNew" data-client="${c.id}" ${ro()}>+ Nueva</button></div>
         <div class="aglist">${up.length?up.map(e=>evRow(e,'ev')).join(''):`<div class="empty">${emptyIcon}No hay reuniones próximas.</div>`}</div>
         ${past.length?`<div class="label" style="margin:16px 0 8px">Anteriores</div><div class="aglist">${past.map(e=>evRow(e,'')).join('')}</div>`:''}</section>
@@ -928,7 +950,7 @@ function openDrawer(id){
       ${f('address','Dirección','text','full')}
       <div class="sect">Membresía</div>
       ${f('plan','Plan')}
-      ${f('setupPrice','Precio de venta (pago único, €)','number')}
+      ${f('setupPrice','Precio del proyecto (€)','number')}
       ${f('fee','Cuota mensual (€)','number')}
       <label class="field"><span>Día de cobro</span><input id="f_dueDay" name="dueDay" type="number" min="1" max="31" value="${esc(c.dueDay??'')}"></label>
       ${f('start','Fecha de alta','date')}
@@ -964,6 +986,11 @@ document.addEventListener('click',async e=>{
   if(a==='editClient')return openDrawer(id);
   if(a==='setupPay'){const c=clientById(id);await write(()=>S.db.doc('payments/'+id+'_setup').set({clientId:id,month:todayISO().slice(0,7),amount:+c.setupPrice||0,date:todayISO(),method:'Revolut',kind:'setup',by:S.me||null,at:new Date().toISOString()}),'Venta de '+c.name+' marcada como cobrada');return}
   if(a==='setupUnpay'){await write(()=>S.db.doc('payments/'+id+'_setup').delete(),'Venta desmarcada');return}
+  if(a==='oneOff')return openOneOff(id,el.dataset.k||'setup');
+  if(a==='delPay'){
+    if(el.dataset.armed){await write(()=>S.db.doc('payments/'+el.dataset.pid).delete(),'Pago quitado')}
+    else{el.dataset.armed='1';el.textContent='¿Quitar?';setTimeout(()=>{if(el.isConnected){delete el.dataset.armed;el.textContent='Quitar'}},3500)}
+    return}
   if(a==='goCobros'){S.tab='cobros';render();return window.scrollTo(0,0)}
   if(a==='goRevolut'){S.tab='revolut';render();return window.scrollTo(0,0)}
   if(a==='back'){S.tab='clientes';render();return window.scrollTo(0,0)}
@@ -1024,6 +1051,9 @@ document.addEventListener('submit',async e=>{
   if(f.id==='payForm'){const id=f.dataset.id;const c=clientById(id);
     const ok=await write(()=>S.db.doc('payments/'+payKey(id,S.month)).set({clientId:id,month:S.month,amount:+document.getElementById('pAmount').value||0,date:document.getElementById('pDate').value,method:document.getElementById('pMethod').value,by:S.me||null,at:new Date().toISOString()}),'Cobro de '+c.name+' guardado');
     if(ok){S.payForm=null;render()}return}
+  if(f.id==='oneOffForm'){const cid=f.dataset.id;const amount=parseFloat(f.elements.amount.value)||0,date=f.elements.date.value;if(!amount||!date)return;
+    const d={clientId:cid,kind:f.elements.kind.value,concept:(f.elements.concept.value||'').trim(),amount,date,month:date.slice(0,7),method:f.elements.method.value,by:S.me||null,at:new Date().toISOString()};
+    if(await write(()=>S.db.collection('payments').add(d),'Pago guardado'))closeDrawer();return}
   if(f.id==='contactForm'){const c=clientById(S.clientId);if(!c)return;const x={};['name','role','email','phone'].forEach(k=>x[k]=(f.elements[k].value||'').trim());if(!x.name)return;
     const ok=await write(()=>S.db.doc('clients/'+c.id).update({contacts:[...(c.contacts||[]),x]}),'Contacto añadido');
     if(ok){S.contactForm=false;render()}return}
