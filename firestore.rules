@@ -1,0 +1,20 @@
+rules_version = '2';
+
+// Solo las personas de esta lista pueden leer o escribir datos de nukleo.
+// Cambia los dos emails por los vuestros (los mismos con los que entráis al panel).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function esDelEquipo() {
+      return request.auth != null
+        && request.auth.token.email in [
+          'tu-email@ejemplo.com',
+          'email-de-tu-socio@ejemplo.com'
+        ];
+    }
+
+    match /{document=**} {
+      allow read, write: if esDelEquipo();
+    }
+  }
+}
