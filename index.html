@@ -485,7 +485,8 @@ const S={db:null,user:null,me:null,canWrite:true,clients:[],payments:{},goals:{}
 const clientById=id=>S.clients.find(c=>c.id===id);
 const payKey=(cid,m)=>cid+'_'+m;
 const payFor=(cid,m)=>S.payments[payKey(cid,m)];
-const activeFor=m=>S.clients.filter(c=>c.stage==='activo'&&(!c.start||c.start.slice(0,7)<=m));
+const feeStartM=c=>c.feeFrom||(c.start?c.start.slice(0,7):'');
+const activeFor=m=>S.clients.filter(c=>c.stage==='activo'&&(+c.fee||0)>0&&(!feeStartM(c)||feeStartM(c)<=m));
 const paysInMonth=m=>Object.values(S.payments).filter(p=>p.month===m);
 const collected=m=>paysInMonth(m).reduce((a,p)=>a+(+p.amount||0),0);
 const expected=m=>activeFor(m).reduce((a,c)=>a+(+c.fee||0),0);
@@ -676,10 +677,14 @@ function vPipeline(){
   <div class="board"><div class="cols">${cols}</div></div></section>`;
 }
 
+function salesThisMonth(m){
+  const ps=paysInMonth(m).filter(p=>p.kind==='setup');if(!ps.length)return '';
+  return `<div class="label" style="margin:18px 0 6px">Ventas cobradas este mes</div><div class="list">${ps.map(p=>{const c=clientById(p.clientId);return `<div class="li"><div class="who">${av(c?c.name:'?')}<div style="min-width:0"><div class="t">${esc(c?c.name:'Cliente eliminado')}</div><div class="m">Pago único · ${fmtDate(p.date)} · ${esc(p.method||'')}</div></div></div><span class="num" style="font-weight:600">${fmtEur(p.amount)}</span></div>`}).join('')}</div>`;
+}
 function vCobros(){
   const m=S.month,rows=dueRows(m);
   if(!S.clients.length) return emptyClients();
-  if(!rows.length) return `<section class="panel"><div class="ph"><h2>Cobros de ${esc(mLabel(m))}</h2></div><div class="empty">${emptyIcon}No hay clientes activos este mes. Pasa un cliente a “Cliente activo” y ponle su cuota mensual para que aparezca aquí.</div></section>`;
+  if(!rows.length) return `<section class="panel"><div class="ph"><h2>Cobros de ${esc(mLabel(m))}</h2><button class="btn sm" data-act="goRevolut">Importar Revolut</button></div><div class="empty">${emptyIcon}No hay cuotas mensuales que cobrar este mes.</div>${salesThisMonth(m)}<div class="totals"><div><span class="label">Cobrado</span><b>${fmtEur(collected(m))}</b></div>${S.goals[m]?`<div><span class="label">Objetivo</span><b>${fmtEur(S.goals[m])}</b></div>`:''}</div></section>`;
   const col=collected(m),exp=expected(m),done=rows.filter(c=>payFor(c.id,m)).length;
   const trs=rows.map(c=>{const p=payFor(c.id,m),st=payStatus(c,m);
     let tr=`<tr><td><div class="who">${av(c.name)}<div style="min-width:0"><div class="t">${esc(c.name)}</div>${c.plan?`<div class="m">${esc(c.plan)}</div>`:''}</div></div></td>
@@ -696,6 +701,7 @@ function vCobros(){
   return `<section class="panel"><div class="ph"><h2>Cobros de ${esc(mLabel(m))}</h2><span class="arow"><span class="sub">${done} de ${rows.length} recibidos</span><button class="btn sm" data-act="goRevolut">Importar Revolut</button></span></div>
   <div class="progress" aria-hidden="true">${rows.map(c=>`<i class="${payFor(c.id,m)?'on':''}"></i>`).join('')}</div>
   <div class="tablewrap"><table class="ptable"><thead><tr><th>Cliente</th><th class="r">Cuota</th><th class="hide-m">Cobro</th><th>Estado</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>
+  ${salesThisMonth(m)}
   <div class="totals"><div><span class="label">Cobrado</span><b>${fmtEur(col)}</b></div><div><span class="label">Pendiente</span><b>${fmtEur(pend)}</b></div><div><span class="label">Previsto</span><b>${fmtEur(exp)}</b></div>${S.goals[m]?`<div><span class="label">Objetivo</span><b>${fmtEur(S.goals[m])}</b></div>`:''}</div></section>`;
 }
 
@@ -776,16 +782,22 @@ function vClientes(){
     const st=c.stage==='activo'?payStatus(c,cur):null;
     return `<button class="acard" data-act="edit" data-id="${c.id}"><span class="who">${av(c.name)}<span style="min-width:0;display:grid"><span class="t">${esc(c.name)}</span><span class="m">${esc([c.company,c.sector].filter(Boolean).join(' · ')||c.contact||'Sin datos de empresa')}</span></span></span>
     <span class="arow">${stagePill(c.stage)}${st?`<span class="pill ${st.k}">${st.l}</span>`:''}</span>
-    <span class="arow foot"><span class="num">${c.fee?fmtEur(c.fee)+'<span class="muted">/mes</span>':'<span class="muted">Sin cuota</span>'}</span>${nx?`<span class="chip">${fmtDate(nx.date)}${nx.time?' · '+esc(nx.time):''}</span>`:''}</span></button>`}).join('')
+    <span class="arow foot"><span class="num">${c.fee?fmtEur(c.fee)+'<span class="muted">/mes</span>':'<span class="muted">Sin cuota</span>'}${+c.setupPrice>0?'<span class="muted"> · venta '+fmtEur(c.setupPrice)+'</span>':''}</span>${nx?`<span class="chip">${fmtDate(nx.date)}${nx.time?' · '+esc(nx.time):''}</span>`:''}</span></button>`}).join('')
     :`<div class="empty">${emptyIcon}Ningún cliente coincide con la búsqueda.</div>`;
   return `<section class="panel"><div class="ph"><h2>Clientes</h2><span class="sub">${list.length} de ${S.clients.length} · toca una empresa para abrir su cuenta</span></div>
   <div class="toolbar"><label class="search">${SEARCH_ICON}<input type="search" id="search" placeholder="Buscar empresa, persona, CIF o sector" value="${esc(S.search)}" aria-label="Buscar"></label></div>
   <div class="fchips">${chips}</div><div class="agrid">${cards}</div></section>`;
 }
+const setupPay=id=>S.payments[id+'_setup'];
+function saleBox(c){
+  if(!(+c.setupPrice>0))return '';
+  const p=setupPay(c.id);
+  return `<div class="li" style="background:var(--raise);border-radius:10px;padding:10px 12px;margin-bottom:14px;border:0"><div style="min-width:0"><div class="t">Venta · ${fmtEur(c.setupPrice)}</div><div class="m">${p?`Cobrada el ${fmtDate(p.date)} · ${esc(p.method||'')}`:'Pago único pendiente de cobro'}</div></div>${p?`<button class="btn ghost sm" data-act="setupUnpay" data-id="${c.id}" ${ro()}>Deshacer</button>`:`<button class="btn ok sm" data-act="setupPay" data-id="${c.id}" ${ro()}>✓ Cobrada</button>`}</div>`;
+}
 function vCliente(){
   const c=clientById(S.clientId);if(!c){S.tab='clientes';return vClientes()}
-  const cur=ymOf(new Date()),t=todayISO(),startM=c.start?c.start.slice(0,7):'';
-  const pays=Object.values(S.payments).filter(p=>p.clientId===c.id).sort((a,b)=>b.month.localeCompare(a.month));
+  const cur=ymOf(new Date()),t=todayISO(),startM=feeStartM(c);
+  const pays=Object.values(S.payments).filter(p=>p.clientId===c.id).sort((a,b)=>(b.date||b.month).localeCompare(a.date||a.month));
   const total=pays.reduce((a,p)=>a+(+p.amount||0),0);
   const months=[...Array(12)].map((_,i)=>addM(cur,i-11));
   const cell=m=>{if(payFor(c.id,m))return 'paid';if(c.stage!=='activo'||(startM&&m<startM))return 'none';if(m<cur||payStatus(c,m).k==='bad')return 'late';return m===cur?'due':'none'};
@@ -806,7 +818,7 @@ function vCliente(){
   return `<div class="crumb"><button class="btn ghost sm" data-act="back">← Todos los clientes</button></div>
   <section class="panel acct"><div class="acct-top"><div class="who" style="gap:16px;align-items:flex-start">${av(c.name,'xl')}<div style="min-width:0"><h2 class="acct-name">${esc(c.name)}</h2><div class="m">${esc([c.company,c.sector].filter(Boolean).join(' · ')||'Añade la razón social y el sector en Editar datos')}</div><div class="arow" style="margin-top:10px">${stagePill(c.stage)}${c.plan?`<span class="spill">${esc(c.plan)}</span>`:''}${curSt?`<span class="pill ${curSt.k}">${esc(mLabel(cur,true))}: ${curSt.l}</span>`:''}</div></div></div>
     <div class="acct-actions"><button class="btn" data-act="editClient" data-id="${c.id}">Editar datos</button><button class="btn" data-act="evNew" data-client="${c.id}" ${ro()}>+ Reunión</button>${curSt&&curSt.k!=='ok'?`<button class="btn primary" data-act="quickPay" data-id="${c.id}" data-m="${cur}" ${ro()}>✓ Cobro de ${esc(mLabel(cur,true).toLowerCase())}</button>`:''}</div></div>
-    <div class="kstrip"><div><span class="label">Cuota</span><b class="num">${c.fee?fmtEur(c.fee):'—'}</b><span class="m">${c.dueDay?'se cobra el día '+esc(c.dueDay):'al mes'}</span></div><div><span class="label">Cobrado total</span><b class="num">${fmtEur(total)}</b><span class="m">${pays.length} pago${pays.length===1?'':'s'}</span></div><div><span class="label">Cliente desde</span><b class="num">${c.start?fmtDate(c.start):'—'}</b><span class="m">${c.start?monthsSince(c.start):'sin fecha de alta'}</span></div><div><span class="label">Meses atrasados</span><b class="num">${late}</b><span class="m">últimos 12 meses</span></div></div></section>
+    <div class="kstrip"><div><span class="label">Cuota</span><b class="num">${c.fee?fmtEur(c.fee):'—'}</b><span class="m">${c.fee?(c.dueDay?'el día '+esc(c.dueDay)+' de cada mes':'al mes')+(c.feeFrom&&c.feeFrom>cur?' · desde '+esc(mLabel(c.feeFrom,true).toLowerCase()):''):'sin cuota'}</span></div><div><span class="label">Cobrado total</span><b class="num">${fmtEur(total)}</b><span class="m">${pays.length} pago${pays.length===1?'':'s'}</span></div><div><span class="label">Cliente desde</span><b class="num">${c.start?fmtDate(c.start):'—'}</b><span class="m">${c.start?monthsSince(c.start):'sin fecha de alta'}</span></div><div><span class="label">Meses atrasados</span><b class="num">${late}</b><span class="m">últimos 12 meses</span></div></div></section>
   <div class="two">
     <div style="display:grid;gap:18px;align-content:start;min-width:0">
       <section class="panel"><div class="ph"><h2>Datos de la empresa</h2><button class="btn sm" data-act="editClient" data-id="${c.id}">Editar</button></div>${dl([['Razón social',c.company],['CIF / NIF',c.taxId],['Sector',c.sector],['Web',web,1],['Dirección',c.address],['Contacto',c.contact],['Responsable',c.owner],['Nombre en Revolut',c.payer]])}</section>
@@ -816,10 +828,10 @@ function vCliente(){
         <div class="notes">${logl}${c.notes?`<div class="note"><div class="nm">Notas generales de la ficha</div><div class="nt">${esc(c.notes)}</div></div>`:''}${!log.length&&!c.notes?`<div class="empty">${emptyIcon}Apunta llamadas, acuerdos o cualquier detalle de esta empresa.</div>`:''}</div></section>
     </div>
     <div style="display:grid;gap:18px;align-content:start;min-width:0">
-      <section class="panel"><div class="ph"><h2>Pagos</h2><span class="sub">últimos 12 meses</span></div>
+      <section class="panel"><div class="ph"><h2>Pagos</h2><span class="sub">últimos 12 meses</span></div>${saleBox(c)}
         <div class="mgrid">${states.map(x=>`<span class="mc ${x.s}" title="${esc(mLabel(x.m))}: ${lbl[x.s]}"><span>${esc(mLabel(x.m,true))}</span><i></i></span>`).join('')}</div>
         <div class="mlegend"><span><i style="background:var(--ink)"></i>Pagado</span><span><i style="background:repeating-linear-gradient(-45deg,var(--ink) 0 2px,transparent 2px 5px);box-shadow:inset 0 0 0 1.5px var(--ink)"></i>Atrasado</span><span><i style="box-shadow:inset 0 0 0 1.5px var(--ink)"></i>Pendiente</span></div>
-        <div class="list" style="margin-top:14px">${pays.length?pays.slice(0,12).map(p=>`<div class="li"><div style="min-width:0"><div class="t">${esc(mLabel(p.month))}</div><div class="m">${fmtDate(p.date)} · ${esc(p.method||'')}${p.by?` · por <span data-uid="${esc(p.by)}">…</span>`:''}</div></div><span class="num" style="font-weight:600">${fmtEur(p.amount)}</span></div>`).join(''):`<div class="empty">${emptyIcon}Todavía no hay pagos registrados.</div>`}</div></section>
+        <div class="list" style="margin-top:14px">${pays.length?pays.slice(0,12).map(p=>`<div class="li"><div style="min-width:0"><div class="t">${p.kind==='setup'?'Venta · pago único':esc(mLabel(p.month))}</div><div class="m">${fmtDate(p.date)} · ${esc(p.method||'')}${p.by?` · por <span data-uid="${esc(p.by)}">…</span>`:''}</div></div><span class="num" style="font-weight:600">${fmtEur(p.amount)}</span></div>`).join(''):`<div class="empty">${emptyIcon}Todavía no hay pagos registrados.</div>`}</div></section>
       <section class="panel"><div class="ph"><h2>Reuniones</h2><button class="btn sm" data-act="evNew" data-client="${c.id}" ${ro()}>+ Nueva</button></div>
         <div class="aglist">${up.length?up.map(e=>evRow(e,'ev')).join(''):`<div class="empty">${emptyIcon}No hay reuniones próximas.</div>`}</div>
         ${past.length?`<div class="label" style="margin:16px 0 8px">Anteriores</div><div class="aglist">${past.map(e=>evRow(e,'')).join('')}</div>`:''}</section>
@@ -916,9 +928,11 @@ function openDrawer(id){
       ${f('address','Dirección','text','full')}
       <div class="sect">Membresía</div>
       ${f('plan','Plan')}
+      ${f('setupPrice','Precio de venta (pago único, €)','number')}
       ${f('fee','Cuota mensual (€)','number')}
       <label class="field"><span>Día de cobro</span><input id="f_dueDay" name="dueDay" type="number" min="1" max="31" value="${esc(c.dueDay??'')}"></label>
       ${f('start','Fecha de alta','date')}
+      <label class="field"><span>Primera cuota</span><input id="f_feeFrom" name="feeFrom" type="month" value="${esc(c.feeFrom||'')}"><em>Mes desde el que se cobra la cuota.</em></label>
       <label class="field full"><span>Nombre en Revolut</span><input id="f_payer" name="payer" value="${esc(c.payer||'')}"><em>Cómo aparece en el concepto del pago, si no coincide con el nombre.</em></label>
       <div class="sect">Seguimiento</div>
       ${f('nextAction','Próxima acción')}
@@ -948,6 +962,8 @@ document.addEventListener('click',async e=>{
   if(a==='new')return openDrawer(null);
   if(a==='edit'){closeDrawer();return openAccount(id)}
   if(a==='editClient')return openDrawer(id);
+  if(a==='setupPay'){const c=clientById(id);await write(()=>S.db.doc('payments/'+id+'_setup').set({clientId:id,month:todayISO().slice(0,7),amount:+c.setupPrice||0,date:todayISO(),method:'Revolut',kind:'setup',by:S.me||null,at:new Date().toISOString()}),'Venta de '+c.name+' marcada como cobrada');return}
+  if(a==='setupUnpay'){await write(()=>S.db.doc('payments/'+id+'_setup').delete(),'Venta desmarcada');return}
   if(a==='goCobros'){S.tab='cobros';render();return window.scrollTo(0,0)}
   if(a==='goRevolut'){S.tab='revolut';render();return window.scrollTo(0,0)}
   if(a==='back'){S.tab='clientes';render();return window.scrollTo(0,0)}
@@ -1020,8 +1036,8 @@ document.addEventListener('submit',async e=>{
     const ok=id?await write(()=>S.db.doc('events/'+id).update(d),'Evento actualizado'):await write(()=>S.db.collection('events').add({...d,createdAt:d.updatedAt,createdBy:S.me||null}),'Evento guardado');
     if(ok){closeDrawer();if(S.tab==='calendario'){S.month=d.date.slice(0,7);S.selDay=d.date;render()}}return}
   if(f.id==='clientForm'){const id=f.dataset.id;const d={};
-    ['name','contact','stage','plan','start','owner','payer','nextAction','nextDate','notes','company','taxId','sector','web','address'].forEach(k=>d[k]=(f.elements[k].value||'').trim());
-    d.fee=parseFloat(f.elements.fee.value)||0;d.dueDay=parseInt(f.elements.dueDay.value)||null;d.updatedAt=new Date().toISOString();
+    ['name','contact','stage','plan','start','owner','payer','nextAction','nextDate','notes','company','taxId','sector','web','address','feeFrom'].forEach(k=>d[k]=(f.elements[k].value||'').trim());
+    d.fee=parseFloat(f.elements.fee.value)||0;d.setupPrice=parseFloat(f.elements.setupPrice.value)||0;d.dueDay=parseInt(f.elements.dueDay.value)||null;d.updatedAt=new Date().toISOString();
     if(!d.name)return;
     let nid=null;
     const ok=id?await write(()=>S.db.doc('clients/'+id).update(d),'Cambios guardados'):await write(async()=>{const r=await S.db.collection('clients').add({...d,createdAt:d.updatedAt,createdBy:S.me||null});nid=r.id},'Cliente añadido');
