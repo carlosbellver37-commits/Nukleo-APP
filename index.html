@@ -468,6 +468,15 @@ i.ev{background:var(--accent)} i.act{box-shadow:inset 0 0 0 1.5px var(--warn)} i
 .pbar b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.55}
 .pill.off{background:var(--raise);color:var(--muted);box-shadow:inset 0 0 0 1px var(--line)}
 .pf{display:contents}.pf[hidden]{display:none}
+
+.dgh{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;color:var(--muted);font-size:15px;letter-spacing:-3px;padding:6px 8px 6px 4px;margin-right:2px;line-height:1;flex:none;border-radius:6px}
+.dgh:hover{color:var(--ink);background:var(--raise)}
+.dhint{font-size:12px;color:var(--muted);margin:10px 0 0}
+.dghost{position:fixed;left:0;top:0;z-index:9999;pointer-events:none;background:var(--ink);color:var(--surface);font-weight:600;font-size:13px;padding:8px 14px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+body.dragging{cursor:grabbing;user-select:none;-webkit-user-select:none}
+.zone{border-radius:14px;transition:background .12s,box-shadow .12s;margin:0 -8px;padding:0 8px}
+body.dragging .zone{box-shadow:inset 0 0 0 1.5px var(--line)}
+.zone.over{background:color-mix(in srgb,var(--gc) 10%,transparent);box-shadow:inset 0 0 0 2px var(--gc)}
 </style>
 </head>
 <body>
@@ -759,6 +768,7 @@ function salesThisMonth(m){
   const tag=p=>p.kind==='setup'?'Proyecto':p.kind==='annual'?'Anual':'Cambio';
   return `<div class="grp g-all"><h3>Otros pagos cobrados este mes</h3><span class="sub">proyecto, cambios y planes anuales</span></div><div class="list">${ps.map(p=>{const c=clientById(p.clientId);return `<div class="li"><div class="who">${av(c?c.name:'?')}<div style="min-width:0"><div class="t">${esc(c?c.name:'Cliente eliminado')}</div><div class="m">${tag(p)} · ${esc(payLabel(p))} · ${fmtDate(p.date)}${p.method?' · '+esc(p.method):''}</div></div></div><span class="num" style="font-weight:600;color:var(--ok)">${fmtEur(p.amount)}</span></div>`}).join('')}</div>`;
 }
+const dragH=c=>`<span class="dgh" data-drag="${c.id}" title="Arrastra a otro plan" aria-label="Arrastrar a otro plan">⋮⋮</span>`;
 function grp(cls,title,sub,n){return `<div class="grp ${cls}"><h3>${title}</h3>${n!=null?`<span class="gn">${n}</span>`:''}<span class="sub">${sub}</span></div>`}
 function projectRows(m){
   return S.clients.filter(c=>c.stage!=='perdido'&&c.stage!=='lead'&&(+c.setupPrice||0)>0&&(projectLeft(c)>0||paysInMonth(m).some(p=>p.clientId===c.id&&p.kind==='setup')))
@@ -770,18 +780,22 @@ function projectBlock(m){
     const price=+c.setupPrice,paid=projectPaid(c.id),left=projectLeft(c),first=oneOffs(c.id).some(p=>p.kind==='setup'),dep=Math.round(price*DEPOSIT);
     const pct=Math.min(100,paid/price*100);
     const next=!first?{k:'Anticipo '+Math.round(DEPOSIT*100)+' %',v:dep,c:'Pago del anticipo'}:left>0?{k:'Resto',v:left,c:'Pago final'}:null;
-    return `<div class="li prow"><button class="btn ghost" style="padding:0;text-align:left;min-width:0" data-act="edit" data-id="${c.id}"><span class="who">${av(c.name)}<span style="min-width:0;display:grid"><span class="t" style="color:var(--ink)">${esc(c.name)}</span><span class="m">Proyecto ${fmtEur(price)} · cobrado ${fmtEur(paid)}</span></span></span></button>
+    return `<div class="li prow"><button class="btn ghost" style="padding:0;text-align:left;min-width:0" data-act="edit" data-id="${c.id}"><span class="who">${dragH(c)}${av(c.name)}<span style="min-width:0;display:grid"><span class="t" style="color:var(--ink)">${esc(c.name)}</span><span class="m">Proyecto ${fmtEur(price)} · cobrado ${fmtEur(paid)}</span></span></span></button>
     <div class="pbar" title="Cobrado ${fmtEur(paid)} de ${fmtEur(price)}"><i style="width:${pct}%"></i><b style="left:${DEPOSIT*100}%"></b></div>
     <span class="arow"><span class="pill ${first?'ok':'warn'}">Anticipo ${first?'cobrado':'pendiente'}</span><span class="pill ${left>0?(first?'warn':'off'):'ok'}">Resto ${left>0?'pendiente':'cobrado'}</span></span>
     ${next?`<button class="btn ok sm" data-act="oneOff" data-id="${c.id}" data-k="setup" ${ro()}>+ ${next.k} · ${fmtEur(next.v)}</button>`:'<span style="width:1px"></span>'}</div>`}).join('')}</div>`:`<div class="gempty">Ningún proyecto con pago pendiente.</div>`;
   return grp('g-proy','Proyecto: anticipo y pago final','precio base · 30 % al empezar, el resto al entregar',rows.length||null)+body;
 }
+const zone=(plan,cls,inner)=>`<div class="zone ${cls}" data-plan="${plan}">${inner}</div>`;
 function monthlyBlock(m){
   const rows=dueRows(m);
+  const ids=new Set(rows.map(c=>c.id));
+  const later=S.clients.filter(c=>planOf(c)==='membresia'&&!ids.has(c.id)&&!['perdido','lead'].includes(c.stage));
+  const laterHtml=later.length?`<div class="label" style="margin:16px 0 4px">Todavía sin cuota este mes</div><div class="list">${later.map(c=>`<div class="li"><button class="btn ghost" style="padding:0;text-align:left;min-width:0" data-act="edit" data-id="${c.id}"><span class="who">${dragH(c)}${av(c.name)}<span style="min-width:0;display:grid"><span class="t" style="color:var(--ink)">${esc(c.name)}</span><span class="m">${(+c.fee)?fmtEur(c.fee)+'/mes':'Falta la cuota'}${c.feeFrom?' · desde '+esc(mLabel(c.feeFrom,true).toLowerCase()):''} · ${esc(stageLabel(c.stage))}</span></span></span></button>${(+c.fee)?'':`<button class="btn sm" data-act="editClient" data-id="${c.id}">Poner cuota</button>`}</div>`).join('')}</div>`:'';
   const done=rows.filter(c=>payFor(c.id,m)).length;
-  if(!rows.length) return grp('g-mem','Membresía mensual','cuota fija cada mes',null)+`<div class="gempty">No hay cuotas mensuales que cobrar este mes.</div>`;
+  if(!rows.length) return zone('membresia','g-mem',grp('g-mem','Membresía mensual','cuota fija cada mes',later.length||null)+`<div class="gempty">No hay cuotas mensuales que cobrar este mes.</div>`+laterHtml);
   const trs=rows.map(c=>{const p=payFor(c.id,m),st=payStatus(c,m);
-    let tr=`<tr><td><div class="who">${av(c.name)}<div style="min-width:0"><div class="t">${esc(c.name)}</div>${c.plan?`<div class="m">${esc(c.plan)}</div>`:''}</div></div></td>
+    let tr=`<tr><td><div class="who">${dragH(c)}${av(c.name)}<div style="min-width:0"><div class="t">${esc(c.name)}</div>${c.plan?`<div class="m">${esc(c.plan)}</div>`:''}</div></div></td>
     <td class="r num" style="font-weight:500">${fmtEur(p?p.amount:c.fee)}</td><td class="hide-m num" style="color:var(--muted)">${c.dueDay?'Día '+esc(c.dueDay):'—'}</td>
     <td><span class="pill ${st.k}">${st.l}</span>${p?`<div class="sub2">${fmtDate(p.date)} · ${esc(p.method||'')}${p.by?` · por <span data-uid="${esc(p.by)}">…</span>`:''}</div>`:''}</td>
     <td class="r">${p?`<button class="btn ghost sm" data-act="unpay" data-id="${c.id}" ${ro()}>Deshacer</button>`:`<button class="btn ok sm" data-act="payOpen" data-id="${c.id}" ${ro()}>✓ Marcar recibido</button>`}</td></tr>`;
@@ -791,32 +805,32 @@ function monthlyBlock(m){
       <label>Vía<select id="pMethod"><option>Revolut</option><option>Transferencia</option><option>Bizum</option><option>Efectivo</option><option>Otro</option></select></label>
       <button class="btn primary" type="submit">Guardar cobro</button><button class="btn ghost" type="button" data-act="payCancel">Cancelar</button></form></td></tr>`;
     return tr}).join('');
-  return grp('g-mem','Membresía mensual',`${done} de ${rows.length} recibidos este mes`,rows.length)+`<div class="progress" aria-hidden="true">${rows.map(c=>`<i class="${payFor(c.id,m)?'on':''}"></i>`).join('')}</div>
-  <div class="tablewrap"><table class="ptable"><thead><tr><th>Cliente</th><th class="r">Cuota</th><th class="hide-m">Cobro</th><th>Estado</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`;
+  return zone('membresia','g-mem',grp('g-mem','Membresía mensual',`${done} de ${rows.length} recibidos este mes`,rows.length+later.length)+`<div class="progress" aria-hidden="true">${rows.map(c=>`<i class="${payFor(c.id,m)?'on':''}"></i>`).join('')}</div>
+  <div class="tablewrap"><table class="ptable"><thead><tr><th>Cliente</th><th class="r">Cuota</th><th class="hide-m">Cobro</th><th>Estado</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`+laterHtml);
 }
 function annualBlock(){
   const cs=S.clients.filter(c=>planOf(c)==='anual'&&!['perdido','lead'].includes(c.stage));
   const t=todayISO();
   const body=cs.length?`<div class="list">${cs.map(c=>{const cy=annualCycle(c),last=S.payments[c.id+'_annual_'+(cy.y-1)];
     const late=cy.date<t,soon=!late&&cy.date<=addDays(t,30);
-    return `<div class="li prow"><button class="btn ghost" style="padding:0;text-align:left;min-width:0" data-act="edit" data-id="${c.id}"><span class="who">${av(c.name)}<span style="min-width:0;display:grid"><span class="t" style="color:var(--ink)">${esc(c.name)}</span><span class="m">${last?'Último cobro '+fmtDate(last.date)+' · ':''}Renovación ${fmtDate(cy.date)}</span></span></span></button>
+    return `<div class="li prow"><button class="btn ghost" style="padding:0;text-align:left;min-width:0" data-act="edit" data-id="${c.id}"><span class="who">${dragH(c)}${av(c.name)}<span style="min-width:0;display:grid"><span class="t" style="color:var(--ink)">${esc(c.name)}</span><span class="m">${last?'Último cobro '+fmtDate(last.date)+' · ':''}Renovación ${fmtDate(cy.date)}</span></span></span></button>
     <span class="num" style="font-weight:600">${(+c.annualFee||0)?fmtEur(c.annualFee):'<span class="muted">Sin importe</span>'}<span class="muted" style="font-weight:400">/año</span></span>
     <span class="pill ${late?'bad':soon?'warn':'off'}">${late?'Atrasado':soon?'Vence pronto':'Al día'}</span>
     <button class="btn ok sm" data-act="oneOff" data-id="${c.id}" data-k="annual" ${ro()}>✓ Marcar recibido</button></div>`}).join('')}</div>`:`<div class="gempty">Nadie en plan anual todavía.</div>`;
-  return grp('g-anu','Plan anual','un pago al año, con fecha de renovación',cs.length||null)+body;
+  return zone('anual','g-anu',grp('g-anu','Plan anual','un pago al año, con fecha de renovación',cs.length||null)+body);
 }
 function changesBlock(m){
   const cs=S.clients.filter(c=>planOf(c)==='cambios'&&!['perdido','lead'].includes(c.stage));
   const body=cs.length?`<div class="list">${cs.map(c=>{const ex=oneOffs(c.id).filter(p=>p.kind==='extra');const mm=ex.filter(p=>p.month===m).reduce((a,p)=>a+(+p.amount||0),0),tot=ex.reduce((a,p)=>a+(+p.amount||0),0);
-    return `<div class="li prow"><button class="btn ghost" style="padding:0;text-align:left;min-width:0" data-act="edit" data-id="${c.id}"><span class="who">${av(c.name)}<span style="min-width:0;display:grid"><span class="t" style="color:var(--ink)">${esc(c.name)}</span><span class="m">${ex.length} cambio${ex.length===1?'':'s'} cobrado${ex.length===1?'':'s'} · ${fmtEur(tot)} en total</span></span></span></button>
+    return `<div class="li prow"><button class="btn ghost" style="padding:0;text-align:left;min-width:0" data-act="edit" data-id="${c.id}"><span class="who">${dragH(c)}${av(c.name)}<span style="min-width:0;display:grid"><span class="t" style="color:var(--ink)">${esc(c.name)}</span><span class="m">${ex.length} cambio${ex.length===1?'':'s'} cobrado${ex.length===1?'':'s'} · ${fmtEur(tot)} en total</span></span></span></button>
     <span class="num" style="font-weight:600;${mm?'color:var(--ok)':''}">${fmtEur(mm)}<span class="muted" style="font-weight:400"> este mes</span></span>
     <button class="btn sm" data-act="oneOff" data-id="${c.id}" data-k="extra" ${ro()}>+ Cambio</button></div>`}).join('')}</div>`:`<div class="gempty">Nadie paga por cambios todavía.</div>`;
-  return grp('g-cam','Pago por cambios','sin cuota: cada cambio se cobra aparte',cs.length||null)+body;
+  return zone('cambios','g-cam',grp('g-cam','Pago por cambios','sin cuota: cada cambio se cobra aparte',cs.length||null)+body);
 }
 function noPlanBlock(){
-  const cs=S.clients.filter(c=>!planOf(c)&&['construccion','activo','propuesta'].includes(c.stage));
-  if(!cs.length)return '';
-  return grp('g-none','Sin plan elegido','elige qué plan tendrán después del proyecto',cs.length)+`<div class="list">${cs.map(c=>`<div class="li"><div class="who">${av(c.name)}<div style="min-width:0"><div class="t">${esc(c.name)}</div><div class="m">${esc(stageLabel(c.stage))}</div></div></div><button class="btn sm" data-act="editClient" data-id="${c.id}">Elegir plan</button></div>`).join('')}</div>`;
+  const cs=S.clients.filter(c=>['','proyecto'].includes(planOf(c))&&['construccion','activo','propuesta'].includes(c.stage));
+  const body=cs.length?`<div class="list">${cs.map(c=>`<div class="li"><div class="who">${dragH(c)}${av(c.name)}<div style="min-width:0"><div class="t">${esc(c.name)}</div><div class="m">${esc(stageLabel(c.stage))} · ${planOf(c)?'Solo proyecto':'Sin plan elegido'}</div></div></div><button class="btn sm" data-act="editClient" data-id="${c.id}">Elegir plan</button></div>`).join('')}</div>`:`<div class="gempty">Arrastra aquí a quien no quiera plan.</div>`;
+  return zone('proyecto','g-none',grp('g-none','Solo proyecto o sin plan elegido','pago único, o pendiente de decidir',cs.length||null)+body);
 }
 function vCobros(){
   const m=S.month;
@@ -824,6 +838,7 @@ function vCobros(){
   const col=collected(m),exp=expected(m),pend=dueRows(m).filter(c=>!payFor(c.id,m)).reduce((a,c)=>a+(+c.fee||0),0);
   return `<section class="panel"><div class="ph"><h2>Cobros de ${esc(mLabel(m))}</h2><span class="arow"><button class="btn sm" data-act="goRevolut">Importar Revolut</button></span></div>
   <div class="gnav">${[['g-proy','Proyecto'],['g-mem','Membresía'],['g-anu','Anual'],['g-cam','Por cambios']].map(x=>`<a class="${x[0]}" data-act="gjump" data-g="${x[0]}">${x[1]}</a>`).join('')}</div>
+  <div class="dhint">Arrastra <span class="dgh" style="pointer-events:none">⋮⋮</span> de un cliente a otro plan para cambiarlo.</div>
   ${projectBlock(m)}${monthlyBlock(m)}${annualBlock()}${changesBlock(m)}${noPlanBlock()}${salesThisMonth(m)}
   <div class="totals"><div><span class="label">Cobrado</span><b>${fmtEur(col)}</b></div><div><span class="label">Cuotas pendientes</span><b>${fmtEur(pend)}</b></div><div><span class="label">Previsto cuotas</span><b>${fmtEur(exp)}</b></div>${S.goals[m]?`<div><span class="label">Objetivo</span><b>${fmtEur(S.goals[m])}</b></div>`:''}</div></section>`;
 }
@@ -1212,6 +1227,41 @@ document.addEventListener('submit',async e=>{
     const ok=id?await write(()=>S.db.doc('clients/'+id).update(d),'Cambios guardados'):await write(async()=>{const r=await S.db.collection('clients').add({...d,createdAt:d.updatedAt,createdBy:S.me||null});nid=r.id},'Cliente añadido');
     if(ok){closeDrawer();if(nid)openAccount(nid)}return}
 });
+
+/* ---------- arrastrar clientes entre planes ---------- */
+(function(){
+  let D=null;
+  const zoneAt=(x,y)=>{if(D)D.ghost.style.display='none';const el=document.elementFromPoint(x,y);if(D)D.ghost.style.display='';return el&&el.closest?el.closest('.zone'):null};
+  document.addEventListener('pointerdown',e=>{
+    const h=e.target.closest&&e.target.closest('[data-drag]');if(!h||e.button>0||S.canWrite===false)return;
+    const c=clientById(h.dataset.drag);if(!c)return;
+    e.preventDefault();e.stopPropagation();
+    const g=document.createElement('div');g.className='dghost';g.textContent=c.name;document.body.appendChild(g);
+    D={id:c.id,ghost:g,zone:null,y:e.clientY,raf:0};
+    try{h.setPointerCapture(e.pointerId)}catch(_){}
+    document.body.classList.add('dragging');
+    move(e);
+    const tick=()=>{if(!D)return;const y=D.y,H=innerHeight;if(y<70)scrollBy(0,-14);else if(y>H-70)scrollBy(0,14);D.raf=requestAnimationFrame(tick)};tick();
+  },true);
+  function move(e){
+    if(!D)return;D.y=e.clientY;
+    D.ghost.style.transform=`translate(${e.clientX+12}px,${e.clientY+12}px)`;
+    const z=zoneAt(e.clientX,e.clientY);
+    if(z!==D.zone){if(D.zone)D.zone.classList.remove('over');D.zone=z;if(z)z.classList.add('over')}
+  }
+  document.addEventListener('pointermove',e=>{if(D){e.preventDefault();move(e)}},{passive:false});
+  async function end(drop){
+    if(!D)return;const d=D;D=null;cancelAnimationFrame(d.raf);d.ghost.remove();document.body.classList.remove('dragging');
+    document.querySelectorAll('.zone.over').forEach(z=>z.classList.remove('over'));
+    if(!drop||!d.zone)return;
+    const plan=d.zone.dataset.plan,c=clientById(d.id);if(!c||planOf(c)===plan)return;
+    const ok=await write(()=>S.db.doc('clients/'+c.id).update({planType:plan,updatedAt:new Date().toISOString()}),c.name+' → '+PLANS[plan]);
+    if(ok){c.planType=plan;
+      if((plan==='membresia'&&!(+c.fee))||(plan==='anual'&&!(+c.annualFee))){setTimeout(()=>{c.planType=plan;openDrawer(c.id)},200);toast('Ponle el importe a '+c.name)}}
+  }
+  document.addEventListener('pointerup',()=>end(true));
+  document.addEventListener('pointercancel',()=>end(false));
+})();
 render();
 bootFirebase();
 </script>
