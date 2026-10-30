@@ -447,6 +447,27 @@ i.ev{background:var(--accent)} i.act{box-shadow:inset 0 0 0 1.5px var(--warn)} i
 .hero .big{color:var(--ring)}
 .hk>div:nth-child(1) .v{color:var(--warn-soft)}
 .hk>div:nth-child(3) .v{color:var(--ring)}
+
+/* ===== Cobros por grupos ===== */
+.grp{--gc:var(--ink);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:30px 0 12px;padding-bottom:9px;border-bottom:2px solid var(--gc)}
+.grp:first-of-type{margin-top:10px}
+.grp h3{margin:0;font-family:var(--f-display);font-size:17px;letter-spacing:-.01em;color:var(--gc)}
+.grp .sub{font-size:12px;color:var(--muted);flex:1 1 200px}
+.grp .gn{font-family:var(--f-mono);font-size:11px;font-weight:600;background:var(--gc);color:#fff;border-radius:999px;padding:1px 8px}
+.g-proy{--gc:var(--accent)}.g-mem{--gc:var(--ok)}.g-anu{--gc:var(--s-reunion)}.g-cam{--gc:var(--warn)}.g-none{--gc:var(--muted)}.g-all{--gc:var(--ink)}
+:root[data-theme="dark"] .grp .gn,.g-proy .gn{color:var(--accent-ink)}
+.gempty{font-size:13px;color:var(--muted);padding:12px 2px}
+.gnav{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 2px}
+.gnav a{cursor:pointer;font-size:12px;font-weight:600;padding:5px 12px;border-radius:999px;border:1.5px solid var(--gc,var(--line));color:var(--gc)}
+.gnav a.g-proy{--gc:var(--accent)}.gnav a.g-mem{--gc:var(--ok)}.gnav a.g-anu{--gc:var(--s-reunion)}.gnav a.g-cam{--gc:var(--warn)}
+.prow{display:grid;grid-template-columns:minmax(170px,1.3fr) minmax(90px,1fr) auto auto;gap:10px 16px;align-items:center}
+.prow .pbar{max-width:none;width:100%}
+@media (max-width:720px){.prow{grid-template-columns:1fr auto}.prow .pbar{grid-column:1/-1;order:3}}
+.pbar{position:relative;flex:1 1 120px;min-width:90px;max-width:220px;height:8px;border-radius:999px;background:var(--line)}
+.pbar i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--ok)}
+.pbar b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.55}
+.pill.off{background:var(--raise);color:var(--muted);box-shadow:inset 0 0 0 1px var(--line)}
+.pf{display:contents}.pf[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -515,6 +536,7 @@ const OPEN=['lead','contactado','reunion','propuesta'];
 const stageLabel=k=>(STAGES.find(s=>s.k===k)||{l:k}).l;
 const pad=n=>String(n).padStart(2,'0');
 const ymOf=d=>d.getFullYear()+'-'+pad(d.getMonth()+1);
+const addDays=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
 const todayISO=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
 const addM=(m,n)=>{const [y,mo]=m.split('-').map(Number);return ymOf(new Date(y,mo-1+n,1))};
 const mLabel=(m,short)=>{const [y,mo]=m.split('-').map(Number);const s=new Date(y,mo-1,1).toLocaleDateString('es-ES',short?{month:'short'}:{month:'long',year:'numeric'});return (s.charAt(0).toUpperCase()+s.slice(1)).replace('.','')};
@@ -535,7 +557,12 @@ const clientById=id=>S.clients.find(c=>c.id===id);
 const payKey=(cid,m)=>cid+'_'+m;
 const payFor=(cid,m)=>S.payments[payKey(cid,m)];
 const feeStartM=c=>c.feeFrom||(c.start?c.start.slice(0,7):'');
-const activeFor=m=>S.clients.filter(c=>c.stage==='activo'&&(+c.fee||0)>0&&(!feeStartM(c)||feeStartM(c)<=m));
+const PLANS={proyecto:'Solo proyecto',membresia:'Membresía mensual',cambios:'Por cambios',anual:'Plan anual'};
+const planOf=c=>c.planType||((+c.fee||0)>0?'membresia':'');
+const planLabel=c=>PLANS[planOf(c)]||'Sin plan elegido';
+const DEPOSIT=.3;
+const annualCycle=c=>{const d0=c.renewDate||c.start||todayISO();const y0=+d0.slice(0,4);let md=d0.slice(5);if(md==='02-29')md='02-28';let y=y0;while(S.payments[c.id+'_annual_'+y]&&y<y0+40)y++;return {y,date:y+'-'+md}};
+const activeFor=m=>S.clients.filter(c=>c.stage==='activo'&&planOf(c)==='membresia'&&(+c.fee||0)>0&&(!feeStartM(c)||feeStartM(c)<=m));
 const paysInMonth=m=>Object.values(S.payments).filter(p=>p.month===m);
 const collected=m=>paysInMonth(m).reduce((a,p)=>a+(+p.amount||0),0);
 const expected=m=>activeFor(m).reduce((a,c)=>a+(+c.fee||0),0);
@@ -727,18 +754,32 @@ function vPipeline(){
 }
 
 function salesThisMonth(m){
-  const ps=paysInMonth(m).filter(p=>p.kind==='setup'||p.kind==='extra').sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  const pend=S.clients.filter(c=>c.stage!=='perdido'&&projectLeft(c)>0);
-  let h='';
-  if(ps.length)h+=`<div class="label" style="margin:18px 0 6px">Pagos sueltos cobrados este mes</div><div class="list">${ps.map(p=>{const c=clientById(p.clientId);return `<div class="li"><div class="who">${av(c?c.name:'?')}<div style="min-width:0"><div class="t">${esc(c?c.name:'Cliente eliminado')}</div><div class="m">${esc(payLabel(p))} · ${fmtDate(p.date)}${p.method?' · '+esc(p.method):''}</div></div></div><span class="num" style="font-weight:600">${fmtEur(p.amount)}</span></div>`}).join('')}</div>`;
-  if(pend.length)h+=`<div class="label" style="margin:18px 0 6px">Proyectos con pago pendiente</div><div class="list">${pend.map(c=>`<div class="li"><button class="btn ghost" style="padding:0;text-align:left;min-width:0" data-act="edit" data-id="${c.id}"><span class="who">${av(c.name)}<span style="min-width:0;display:grid"><span class="t" style="color:var(--ink)">${esc(c.name)}</span><span class="m">Faltan ${fmtEur(projectLeft(c))} de ${fmtEur(c.setupPrice)}${c.nextDate?' · '+fmtDate(c.nextDate):''}</span></span></span></button><button class="btn ok sm" data-act="oneOff" data-id="${c.id}" data-k="setup" ${ro()}>+ Pago</button></div>`).join('')}</div>`;
-  return h;
+  const ps=paysInMonth(m).filter(p=>p.kind).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(!ps.length)return '';
+  const tag=p=>p.kind==='setup'?'Proyecto':p.kind==='annual'?'Anual':'Cambio';
+  return `<div class="grp g-all"><h3>Otros pagos cobrados este mes</h3><span class="sub">proyecto, cambios y planes anuales</span></div><div class="list">${ps.map(p=>{const c=clientById(p.clientId);return `<div class="li"><div class="who">${av(c?c.name:'?')}<div style="min-width:0"><div class="t">${esc(c?c.name:'Cliente eliminado')}</div><div class="m">${tag(p)} · ${esc(payLabel(p))} · ${fmtDate(p.date)}${p.method?' · '+esc(p.method):''}</div></div></div><span class="num" style="font-weight:600;color:var(--ok)">${fmtEur(p.amount)}</span></div>`}).join('')}</div>`;
 }
-function vCobros(){
-  const m=S.month,rows=dueRows(m);
-  if(!S.clients.length) return emptyClients();
-  if(!rows.length) return `<section class="panel"><div class="ph"><h2>Cobros de ${esc(mLabel(m))}</h2><button class="btn sm" data-act="goRevolut">Importar Revolut</button></div><div class="empty">${emptyIcon}No hay cuotas mensuales que cobrar este mes.</div>${salesThisMonth(m)}<div class="totals"><div><span class="label">Cobrado</span><b>${fmtEur(collected(m))}</b></div>${S.goals[m]?`<div><span class="label">Objetivo</span><b>${fmtEur(S.goals[m])}</b></div>`:''}</div></section>`;
-  const col=collected(m),exp=expected(m),done=rows.filter(c=>payFor(c.id,m)).length;
+function grp(cls,title,sub,n){return `<div class="grp ${cls}"><h3>${title}</h3>${n!=null?`<span class="gn">${n}</span>`:''}<span class="sub">${sub}</span></div>`}
+function projectRows(m){
+  return S.clients.filter(c=>c.stage!=='perdido'&&c.stage!=='lead'&&(+c.setupPrice||0)>0&&(projectLeft(c)>0||paysInMonth(m).some(p=>p.clientId===c.id&&p.kind==='setup')))
+    .sort((a,b)=>projectLeft(b)-projectLeft(a)||a.name.localeCompare(b.name));
+}
+function projectBlock(m){
+  const rows=projectRows(m);
+  const body=rows.length?`<div class="list">${rows.map(c=>{
+    const price=+c.setupPrice,paid=projectPaid(c.id),left=projectLeft(c),first=oneOffs(c.id).some(p=>p.kind==='setup'),dep=Math.round(price*DEPOSIT);
+    const pct=Math.min(100,paid/price*100);
+    const next=!first?{k:'Anticipo '+Math.round(DEPOSIT*100)+' %',v:dep,c:'Pago del anticipo'}:left>0?{k:'Resto',v:left,c:'Pago final'}:null;
+    return `<div class="li prow"><button class="btn ghost" style="padding:0;text-align:left;min-width:0" data-act="edit" data-id="${c.id}"><span class="who">${av(c.name)}<span style="min-width:0;display:grid"><span class="t" style="color:var(--ink)">${esc(c.name)}</span><span class="m">Proyecto ${fmtEur(price)} · cobrado ${fmtEur(paid)}</span></span></span></button>
+    <div class="pbar" title="Cobrado ${fmtEur(paid)} de ${fmtEur(price)}"><i style="width:${pct}%"></i><b style="left:${DEPOSIT*100}%"></b></div>
+    <span class="arow"><span class="pill ${first?'ok':'warn'}">Anticipo ${first?'cobrado':'pendiente'}</span><span class="pill ${left>0?(first?'warn':'off'):'ok'}">Resto ${left>0?'pendiente':'cobrado'}</span></span>
+    ${next?`<button class="btn ok sm" data-act="oneOff" data-id="${c.id}" data-k="setup" ${ro()}>+ ${next.k} · ${fmtEur(next.v)}</button>`:'<span style="width:1px"></span>'}</div>`}).join('')}</div>`:`<div class="gempty">Ningún proyecto con pago pendiente.</div>`;
+  return grp('g-proy','Proyecto: anticipo y pago final','precio base · 30 % al empezar, el resto al entregar',rows.length||null)+body;
+}
+function monthlyBlock(m){
+  const rows=dueRows(m);
+  const done=rows.filter(c=>payFor(c.id,m)).length;
+  if(!rows.length) return grp('g-mem','Membresía mensual','cuota fija cada mes',null)+`<div class="gempty">No hay cuotas mensuales que cobrar este mes.</div>`;
   const trs=rows.map(c=>{const p=payFor(c.id,m),st=payStatus(c,m);
     let tr=`<tr><td><div class="who">${av(c.name)}<div style="min-width:0"><div class="t">${esc(c.name)}</div>${c.plan?`<div class="m">${esc(c.plan)}</div>`:''}</div></div></td>
     <td class="r num" style="font-weight:500">${fmtEur(p?p.amount:c.fee)}</td><td class="hide-m num" style="color:var(--muted)">${c.dueDay?'Día '+esc(c.dueDay):'—'}</td>
@@ -750,12 +791,41 @@ function vCobros(){
       <label>Vía<select id="pMethod"><option>Revolut</option><option>Transferencia</option><option>Bizum</option><option>Efectivo</option><option>Otro</option></select></label>
       <button class="btn primary" type="submit">Guardar cobro</button><button class="btn ghost" type="button" data-act="payCancel">Cancelar</button></form></td></tr>`;
     return tr}).join('');
-  const pend=rows.filter(c=>!payFor(c.id,m)).reduce((a,c)=>a+(+c.fee||0),0);
-  return `<section class="panel"><div class="ph"><h2>Cobros de ${esc(mLabel(m))}</h2><span class="arow"><span class="sub">${done} de ${rows.length} recibidos</span><button class="btn sm" data-act="goRevolut">Importar Revolut</button></span></div>
-  <div class="progress" aria-hidden="true">${rows.map(c=>`<i class="${payFor(c.id,m)?'on':''}"></i>`).join('')}</div>
-  <div class="tablewrap"><table class="ptable"><thead><tr><th>Cliente</th><th class="r">Cuota</th><th class="hide-m">Cobro</th><th>Estado</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>
-  ${salesThisMonth(m)}
-  <div class="totals"><div><span class="label">Cobrado</span><b>${fmtEur(col)}</b></div><div><span class="label">Pendiente</span><b>${fmtEur(pend)}</b></div><div><span class="label">Previsto</span><b>${fmtEur(exp)}</b></div>${S.goals[m]?`<div><span class="label">Objetivo</span><b>${fmtEur(S.goals[m])}</b></div>`:''}</div></section>`;
+  return grp('g-mem','Membresía mensual',`${done} de ${rows.length} recibidos este mes`,rows.length)+`<div class="progress" aria-hidden="true">${rows.map(c=>`<i class="${payFor(c.id,m)?'on':''}"></i>`).join('')}</div>
+  <div class="tablewrap"><table class="ptable"><thead><tr><th>Cliente</th><th class="r">Cuota</th><th class="hide-m">Cobro</th><th>Estado</th><th></th></tr></thead><tbody>${trs}</tbody></table></div>`;
+}
+function annualBlock(){
+  const cs=S.clients.filter(c=>planOf(c)==='anual'&&!['perdido','lead'].includes(c.stage));
+  const t=todayISO();
+  const body=cs.length?`<div class="list">${cs.map(c=>{const cy=annualCycle(c),last=S.payments[c.id+'_annual_'+(cy.y-1)];
+    const late=cy.date<t,soon=!late&&cy.date<=addDays(t,30);
+    return `<div class="li prow"><button class="btn ghost" style="padding:0;text-align:left;min-width:0" data-act="edit" data-id="${c.id}"><span class="who">${av(c.name)}<span style="min-width:0;display:grid"><span class="t" style="color:var(--ink)">${esc(c.name)}</span><span class="m">${last?'Último cobro '+fmtDate(last.date)+' · ':''}Renovación ${fmtDate(cy.date)}</span></span></span></button>
+    <span class="num" style="font-weight:600">${(+c.annualFee||0)?fmtEur(c.annualFee):'<span class="muted">Sin importe</span>'}<span class="muted" style="font-weight:400">/año</span></span>
+    <span class="pill ${late?'bad':soon?'warn':'off'}">${late?'Atrasado':soon?'Vence pronto':'Al día'}</span>
+    <button class="btn ok sm" data-act="oneOff" data-id="${c.id}" data-k="annual" ${ro()}>✓ Marcar recibido</button></div>`}).join('')}</div>`:`<div class="gempty">Nadie en plan anual todavía.</div>`;
+  return grp('g-anu','Plan anual','un pago al año, con fecha de renovación',cs.length||null)+body;
+}
+function changesBlock(m){
+  const cs=S.clients.filter(c=>planOf(c)==='cambios'&&!['perdido','lead'].includes(c.stage));
+  const body=cs.length?`<div class="list">${cs.map(c=>{const ex=oneOffs(c.id).filter(p=>p.kind==='extra');const mm=ex.filter(p=>p.month===m).reduce((a,p)=>a+(+p.amount||0),0),tot=ex.reduce((a,p)=>a+(+p.amount||0),0);
+    return `<div class="li prow"><button class="btn ghost" style="padding:0;text-align:left;min-width:0" data-act="edit" data-id="${c.id}"><span class="who">${av(c.name)}<span style="min-width:0;display:grid"><span class="t" style="color:var(--ink)">${esc(c.name)}</span><span class="m">${ex.length} cambio${ex.length===1?'':'s'} cobrado${ex.length===1?'':'s'} · ${fmtEur(tot)} en total</span></span></span></button>
+    <span class="num" style="font-weight:600;${mm?'color:var(--ok)':''}">${fmtEur(mm)}<span class="muted" style="font-weight:400"> este mes</span></span>
+    <button class="btn sm" data-act="oneOff" data-id="${c.id}" data-k="extra" ${ro()}>+ Cambio</button></div>`}).join('')}</div>`:`<div class="gempty">Nadie paga por cambios todavía.</div>`;
+  return grp('g-cam','Pago por cambios','sin cuota: cada cambio se cobra aparte',cs.length||null)+body;
+}
+function noPlanBlock(){
+  const cs=S.clients.filter(c=>!planOf(c)&&['construccion','activo','propuesta'].includes(c.stage));
+  if(!cs.length)return '';
+  return grp('g-none','Sin plan elegido','elige qué plan tendrán después del proyecto',cs.length)+`<div class="list">${cs.map(c=>`<div class="li"><div class="who">${av(c.name)}<div style="min-width:0"><div class="t">${esc(c.name)}</div><div class="m">${esc(stageLabel(c.stage))}</div></div></div><button class="btn sm" data-act="editClient" data-id="${c.id}">Elegir plan</button></div>`).join('')}</div>`;
+}
+function vCobros(){
+  const m=S.month;
+  if(!S.clients.length) return emptyClients();
+  const col=collected(m),exp=expected(m),pend=dueRows(m).filter(c=>!payFor(c.id,m)).reduce((a,c)=>a+(+c.fee||0),0);
+  return `<section class="panel"><div class="ph"><h2>Cobros de ${esc(mLabel(m))}</h2><span class="arow"><button class="btn sm" data-act="goRevolut">Importar Revolut</button></span></div>
+  <div class="gnav">${[['g-proy','Proyecto'],['g-mem','Membresía'],['g-anu','Anual'],['g-cam','Por cambios']].map(x=>`<a class="${x[0]}" data-act="gjump" data-g="${x[0]}">${x[1]}</a>`).join('')}</div>
+  ${projectBlock(m)}${monthlyBlock(m)}${annualBlock()}${changesBlock(m)}${noPlanBlock()}${salesThisMonth(m)}
+  <div class="totals"><div><span class="label">Cobrado</span><b>${fmtEur(col)}</b></div><div><span class="label">Cuotas pendientes</span><b>${fmtEur(pend)}</b></div><div><span class="label">Previsto cuotas</span><b>${fmtEur(exp)}</b></div>${S.goals[m]?`<div><span class="label">Objetivo</span><b>${fmtEur(S.goals[m])}</b></div>`:''}</div></section>`;
 }
 
 const CAL_ICON=`<svg width="15" height="15" viewBox="0 0 15 15"><rect x="1.8" y="2.8" width="11.4" height="10.4" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M1.8 6.3h11.4M5 1.3v3M10 1.3v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
@@ -766,6 +836,7 @@ function dayItems(m){
   S.clients.forEach(c=>{if(c.nextDate&&c.nextDate.slice(0,7)===m&&c.stage!=='perdido')push(c.nextDate,{k:'act',id:c.id,time:'',title:(c.nextAction||'Seguimiento')+' · '+c.name,sub:stageLabel(c.stage)})});
   const [y,mo]=m.split('-').map(Number),dim=new Date(y,mo,0).getDate();
   activeFor(m).forEach(c=>{if(c.dueDay&&!payFor(c.id,m))push(m+'-'+pad(Math.min(+c.dueDay,dim)),{k:'due',id:c.id,time:'',title:'Cobro · '+c.name,sub:fmtEur(c.fee)})});
+  S.clients.filter(c=>planOf(c)==='anual'&&!['perdido','lead'].includes(c.stage)).forEach(c=>{const cy=annualCycle(c);if(cy.date.slice(0,7)===m)push(cy.date,{k:'due',id:c.id,time:'',title:'Renovación anual · '+c.name,sub:fmtEur(c.annualFee)})});
   const o={ev:0,act:1,due:2};
   Object.values(out).forEach(l=>l.sort((a,b)=>o[a.k]-o[b.k]||(a.time||'99').localeCompare(b.time||'99')));
   return out;
@@ -835,29 +906,36 @@ function vClientes(){
     const st=activeFor(cur).some(x=>x.id===c.id)?payStatus(c,cur):null;
     return `<button class="acard" data-act="edit" data-id="${c.id}"><span class="who">${av(c.name)}<span style="min-width:0;display:grid"><span class="t">${esc(c.name)}</span><span class="m">${esc([c.company,c.sector].filter(Boolean).join(' · ')||c.contact||'Sin datos de empresa')}</span></span></span>
     <span class="arow">${stagePill(c.stage)}${st?`<span class="pill ${st.k}">${st.l}</span>`:''}</span>
-    <span class="arow foot"><span class="num">${c.fee?fmtEur(c.fee)+'<span class="muted">/mes</span>':'<span class="muted">Sin cuota</span>'}${+c.setupPrice>0?'<span class="muted"> · proyecto '+fmtEur(c.setupPrice)+(projectLeft(c)>0?' (faltan '+fmtEur(projectLeft(c))+')':'')+'</span>':''}</span>${nx?`<span class="chip">${fmtDate(nx.date)}${nx.time?' · '+esc(nx.time):''}</span>`:''}</span></button>`}).join('')
+    <span class="arow foot"><span class="num">${planOf(c)==='membresia'?fmtEur(c.fee)+'<span class="muted">/mes</span>':planOf(c)==='anual'?fmtEur(c.annualFee)+'<span class="muted">/año</span>':'<span class="muted">'+esc(planLabel(c))+'</span>'}${+c.setupPrice>0?'<span class="muted"> · proyecto '+fmtEur(c.setupPrice)+(projectLeft(c)>0?' (faltan '+fmtEur(projectLeft(c))+')':'')+'</span>':''}</span>${nx?`<span class="chip">${fmtDate(nx.date)}${nx.time?' · '+esc(nx.time):''}</span>`:''}</span></button>`}).join('')
     :`<div class="empty">${emptyIcon}Ningún cliente coincide con la búsqueda.</div>`;
   return `<section class="panel"><div class="ph"><h2>Clientes</h2><span class="sub">${list.length} de ${S.clients.length} · toca una empresa para abrir su cuenta</span></div>
   <div class="toolbar"><label class="search">${SEARCH_ICON}<input type="search" id="search" placeholder="Buscar empresa, persona, CIF o sector" value="${esc(S.search)}" aria-label="Buscar"></label></div>
   <div class="fchips">${chips}</div><div class="agrid">${cards}</div></section>`;
 }
-const oneOffs=cid=>Object.values(S.payments).filter(p=>p.clientId===cid&&(p.kind==='setup'||p.kind==='extra'));
+const oneOffs=cid=>Object.values(S.payments).filter(p=>p.clientId===cid&&(p.kind==='setup'||p.kind==='extra'||p.kind==='annual'));
 const projectPaid=cid=>oneOffs(cid).filter(p=>p.kind==='setup').reduce((a,p)=>a+(+p.amount||0),0);
 const projectLeft=c=>Math.max(0,(+c.setupPrice||0)-projectPaid(c.id));
-const payLabel=p=>p.kind==='setup'?(p.concept||'Pago del proyecto'):p.kind==='extra'?(p.concept||'Extra'):null;
+const payLabel=p=>p.kind==='setup'?(p.concept||'Pago del proyecto'):p.kind==='extra'?(p.concept||'Extra'):p.kind==='annual'?(p.concept||'Plan anual'):null;
 function saleBox(c){
   const price=+c.setupPrice||0,paid=projectPaid(c.id),left=projectLeft(c);
   const top=price>0?`<div class="li" style="background:var(--raise);border-radius:10px;padding:10px 12px;margin-bottom:10px;border:0"><div style="min-width:0"><div class="t">Proyecto · ${fmtEur(price)}</div><div class="m">${left>0?`Cobrado ${fmtEur(paid)} · faltan <b style="color:var(--ink)">${fmtEur(left)}</b>`:'Cobrado entero'}</div></div>${left>0?'<span class="pill warn">Pendiente</span>':'<span class="pill ok">Cobrado</span>'}</div>`:'';
-  return top+`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><button class="btn sm" data-act="oneOff" data-id="${c.id}" data-k="setup" ${ro()}>+ Pago del proyecto</button><button class="btn sm" data-act="oneOff" data-id="${c.id}" data-k="extra" ${ro()}>+ Cambio / extra</button></div>`;
+  return top+`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><button class="btn sm" data-act="oneOff" data-id="${c.id}" data-k="setup" ${ro()}>+ Pago del proyecto</button><button class="btn sm" data-act="oneOff" data-id="${c.id}" data-k="extra" ${ro()}>+ Cambio</button>${planOf(c)==='anual'?`<button class="btn sm" data-act="oneOff" data-id="${c.id}" data-k="annual" ${ro()}>+ Pago anual</button>`:''}</div>`;
 }
+function oneOffDefaults(c,kind){
+  const price=+c.setupPrice||0,first=oneOffs(c.id).some(p=>p.kind==='setup'),left=projectLeft(c);
+  if(kind==='annual')return {amount:+c.annualFee||'',concept:'Plan anual '+annualCycle(c).y};
+  if(kind==='setup'){if(!price)return {amount:'',concept:''};return first?{amount:left||'',concept:left>0?'Pago final':''}:{amount:Math.round(price*DEPOSIT),concept:'Anticipo '+Math.round(DEPOSIT*100)+' %'}}
+  return {amount:'',concept:''};
+}
+function fillOneOff(c,kind){const d=oneOffDefaults(c,kind);document.getElementById('o_amount').value=d.amount;document.getElementById('o_concept').value=d.concept}
 function openOneOff(cid,kind){
-  const c=clientById(cid);if(!c)return;const left=projectLeft(c);
+  const c=clientById(cid);if(!c)return;const d=oneOffDefaults(c,kind);
   document.getElementById('modalRoot').innerHTML=`<div class="overlay" data-act="close"><form class="drawer" id="oneOffForm" data-id="${cid}">
     <div class="dh"><div class="who">${av(c.name)}<h2>Registrar pago · ${esc(c.name)}</h2></div><button type="button" class="btn ghost" data-act="close" aria-label="Cerrar">✕</button></div>
     <div class="fgrid">
-      <label class="field"><span>Tipo</span><select id="o_kind" name="kind"><option value="setup" ${kind==='setup'?'selected':''}>Pago del proyecto</option><option value="extra" ${kind==='extra'?'selected':''}>Cambio / extra</option></select></label>
-      <label class="field"><span>Importe (€) *</span><input id="o_amount" name="amount" type="number" step="0.01" min="0" required value="${kind==='setup'&&left>0?left:''}"></label>
-      <label class="field full"><span>Concepto</span><input id="o_concept" name="concept" placeholder="Anticipo, pago final, cambio de carta…" value="${kind==='setup'?(left>0&&left<(+c.setupPrice||0)?'Pago final':''):''}"></label>
+      <label class="field"><span>Tipo</span><select id="o_kind" name="kind"><option value="setup" ${kind==='setup'?'selected':''}>Proyecto (anticipo / resto)</option><option value="extra" ${kind==='extra'?'selected':''}>Cambio</option><option value="annual" ${kind==='annual'?'selected':''}>Plan anual</option></select></label>
+      <label class="field"><span>Importe (€) *</span><input id="o_amount" name="amount" type="number" step="0.01" min="0" required value="${d.amount}"></label>
+      <label class="field full"><span>Concepto</span><input id="o_concept" name="concept" placeholder="Anticipo, pago final, cambio de carta…" value="${esc(d.concept)}"></label>
       <label class="field"><span>Fecha *</span><input id="o_date" name="date" type="date" required value="${todayISO()}"></label>
       <label class="field"><span>Vía</span><select id="o_method" name="method"><option>Revolut</option><option>Transferencia</option><option>Bizum</option><option>Efectivo</option><option>Otro</option></select></label>
     </div>
@@ -887,9 +965,9 @@ function vCliente(){
   const log=(c.log||[]).slice().reverse();
   const logl=log.map(x=>`<div class="note"><div class="nm">${esc(new Date(x.at).toLocaleString('es-ES',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}))}${x.by?` · <span data-uid="${esc(x.by)}">…</span>`:''}</div><div class="nt">${esc(x.text)}</div></div>`).join('');
   return `<div class="crumb"><button class="btn ghost sm" data-act="back">← Todos los clientes</button></div>
-  <section class="panel acct"><div class="acct-top"><div class="who" style="gap:16px;align-items:flex-start">${av(c.name,'xl')}<div style="min-width:0"><h2 class="acct-name">${esc(c.name)}</h2><div class="m">${esc([c.company,c.sector].filter(Boolean).join(' · ')||'Añade la razón social y el sector en Editar datos')}</div><div class="arow" style="margin-top:10px">${stagePill(c.stage)}${c.plan?`<span class="spill">${esc(c.plan)}</span>`:''}${curSt?`<span class="pill ${curSt.k}">${esc(mLabel(cur,true))}: ${curSt.l}</span>`:''}</div></div></div>
+  <section class="panel acct"><div class="acct-top"><div class="who" style="gap:16px;align-items:flex-start">${av(c.name,'xl')}<div style="min-width:0"><h2 class="acct-name">${esc(c.name)}</h2><div class="m">${esc([c.company,c.sector].filter(Boolean).join(' · ')||'Añade la razón social y el sector en Editar datos')}</div><div class="arow" style="margin-top:10px">${stagePill(c.stage)}<span class="spill">${esc(planLabel(c))}</span>${curSt?`<span class="pill ${curSt.k}">${esc(mLabel(cur,true))}: ${curSt.l}</span>`:''}</div></div></div>
     <div class="acct-actions"><button class="btn" data-act="editClient" data-id="${c.id}">Editar datos</button><button class="btn" data-act="evNew" data-client="${c.id}" ${ro()}>+ Reunión</button>${curSt&&curSt.k!=='ok'?`<button class="btn primary" data-act="quickPay" data-id="${c.id}" data-m="${cur}" ${ro()}>✓ Cobro de ${esc(mLabel(cur,true).toLowerCase())}</button>`:''}</div></div>
-    <div class="kstrip"><div><span class="label">Cuota</span><b class="num">${c.fee?fmtEur(c.fee):'—'}</b><span class="m">${c.fee?(c.dueDay?'el día '+esc(c.dueDay)+' de cada mes':'al mes')+(c.feeFrom&&c.feeFrom>cur?' · desde '+esc(mLabel(c.feeFrom,true).toLowerCase()):''):'sin cuota'}</span></div><div><span class="label">Cobrado total</span><b class="num">${fmtEur(total)}</b><span class="m">${pays.length} pago${pays.length===1?'':'s'}</span></div><div><span class="label">Cliente desde</span><b class="num">${c.start?fmtDate(c.start):'—'}</b><span class="m">${c.start?monthsSince(c.start):'sin fecha de alta'}</span></div><div><span class="label">Meses atrasados</span><b class="num">${late}</b><span class="m">últimos 12 meses</span></div></div></section>
+    <div class="kstrip"><div><span class="label">${planOf(c)==='anual'?'Plan anual':'Cuota'}</span><b class="num">${planOf(c)==='anual'?((+c.annualFee)?fmtEur(c.annualFee):'—'):c.fee?fmtEur(c.fee):'—'}</b><span class="m">${planOf(c)==='anual'?'renueva el '+fmtDate(annualCycle(c).date):planOf(c)==='cambios'?'cada cambio se cobra aparte':c.fee?(c.dueDay?'el día '+esc(c.dueDay)+' de cada mes':'al mes')+(c.feeFrom&&c.feeFrom>cur?' · desde '+esc(mLabel(c.feeFrom,true).toLowerCase()):''):'sin cuota'}</span></div><div><span class="label">Cobrado total</span><b class="num">${fmtEur(total)}</b><span class="m">${pays.length} pago${pays.length===1?'':'s'}</span></div><div><span class="label">Cliente desde</span><b class="num">${c.start?fmtDate(c.start):'—'}</b><span class="m">${c.start?monthsSince(c.start):'sin fecha de alta'}</span></div><div><span class="label">Meses atrasados</span><b class="num">${late}</b><span class="m">últimos 12 meses</span></div></div></section>
   <div class="two">
     <div style="display:grid;gap:18px;align-content:start;min-width:0">
       <section class="panel"><div class="ph"><h2>Datos de la empresa</h2><button class="btn sm" data-act="editClient" data-id="${c.id}">Editar</button></div>${dl([['Razón social',c.company],['CIF / NIF',c.taxId],['Sector',c.sector],['Web',web,1],['Dirección',c.address],['Contacto',c.contact],['Responsable',c.owner],['Nombre en Revolut',c.payer]])}</section>
@@ -997,13 +1075,20 @@ function openDrawer(id){
       ${f('sector','Sector')}
       ${f('web','Web')}
       ${f('address','Dirección','text','full')}
-      <div class="sect">Membresía</div>
-      ${f('plan','Plan')}
-      ${f('setupPrice','Precio del proyecto (€)','number')}
+      <div class="sect">Plan y precios</div>
+      <label class="field full"><span>Tipo de plan</span><select id="f_planType" name="planType"><option value="">Sin elegir todavía</option>${Object.entries(PLANS).map(([k,l])=>`<option value="${k}" ${planOf(c)===k?'selected':''}>${l}</option>`).join('')}</select><em>Solo proyecto: se paga una vez. Membresía: cuota cada mes. Por cambios: cada cambio se cobra aparte. Plan anual: un pago al año.</em></label>
+      ${f('setupPrice','Precio base del proyecto (€)','number')}
+      ${f('plan','Detalle del plan (opcional)')}
+      <div class="pf" data-pf="membresia" ${planOf(c)==='membresia'?'':'hidden'}>
       ${f('fee','Cuota mensual (€)','number')}
       <label class="field"><span>Día de cobro</span><input id="f_dueDay" name="dueDay" type="number" min="1" max="31" value="${esc(c.dueDay??'')}"></label>
-      ${f('start','Fecha de alta','date')}
       <label class="field"><span>Primera cuota</span><input id="f_feeFrom" name="feeFrom" type="month" value="${esc(c.feeFrom||'')}"><em>Mes desde el que se cobra la cuota.</em></label>
+      </div>
+      <div class="pf" data-pf="anual" ${planOf(c)==='anual'?'':'hidden'}>
+      ${f('annualFee','Cuota anual (€)','number')}
+      ${f('renewDate','Primera renovación','date')}
+      </div>
+      ${f('start','Fecha de alta','date')}
       <label class="field full"><span>Nombre en Revolut</span><input id="f_payer" name="payer" value="${esc(c.payer||'')}"><em>Cómo aparece en el concepto del pago, si no coincide con el nombre.</em></label>
       <div class="sect">Seguimiento</div>
       ${f('nextAction','Próxima acción')}
@@ -1036,6 +1121,7 @@ document.addEventListener('click',async e=>{
   if(a==='setupPay'){const c=clientById(id);await write(()=>S.db.doc('payments/'+id+'_setup').set({clientId:id,month:todayISO().slice(0,7),amount:+c.setupPrice||0,date:todayISO(),method:'Revolut',kind:'setup',by:S.me||null,at:new Date().toISOString()}),'Venta de '+c.name+' marcada como cobrada');return}
   if(a==='setupUnpay'){await write(()=>S.db.doc('payments/'+id+'_setup').delete(),'Venta desmarcada');return}
   if(a==='oneOff')return openOneOff(id,el.dataset.k||'setup');
+  if(a==='gjump'){const t=document.querySelector('.grp.'+el.dataset.g);if(t)t.scrollIntoView({behavior:'smooth',block:'start'});return}
   if(a==='delPay'){
     if(el.dataset.armed){await write(()=>S.db.doc('payments/'+el.dataset.pid).delete(),'Pago quitado')}
     else{el.dataset.armed='1';el.textContent='¿Quitar?';setTimeout(()=>{if(el.isConnected){delete el.dataset.armed;el.textContent='Quitar'}},3500)}
@@ -1079,6 +1165,8 @@ document.addEventListener('change',async e=>{
   if(el.dataset.act==='stage'){const id=el.dataset.id;await write(()=>S.db.doc('clients/'+id).update({stage:el.value,updatedAt:new Date().toISOString()}),'Movido a '+stageLabel(el.value));return}
   if(el.dataset.act==='impSel'){S.imp.items[+el.dataset.i].sel=el.checked;render();return}
   if(el.dataset.act==='impClient'){const x=S.imp.items[+el.dataset.i];x.clientId=el.value;x.already=!!(el.value&&payFor(el.value,x.month));x.sel=!!el.value&&!x.already;render();return}
+  if(el.id==='f_planType'){document.querySelectorAll('.pf').forEach(x=>x.hidden=x.dataset.pf!==el.value);return}
+  if(el.id==='o_kind'){const c=clientById(el.form.dataset.id);if(c)fillOneOff(c,el.value);return}
   if(el.id==='csv'&&el.files[0])handleFile(el.files[0]);
 });
 document.addEventListener('input',e=>{if(e.target.id==='search'){S.search=e.target.value;const pos=e.target.selectionStart;render();const s=document.getElementById('search');if(s){s.focus();s.setSelectionRange(pos,pos)}}});
@@ -1102,7 +1190,9 @@ document.addEventListener('submit',async e=>{
     if(ok){S.payForm=null;render()}return}
   if(f.id==='oneOffForm'){const cid=f.dataset.id;const amount=parseFloat(f.elements.amount.value)||0,date=f.elements.date.value;if(!amount||!date)return;
     const d={clientId:cid,kind:f.elements.kind.value,concept:(f.elements.concept.value||'').trim(),amount,date,month:date.slice(0,7),method:f.elements.method.value,by:S.me||null,at:new Date().toISOString()};
-    if(await write(()=>S.db.collection('payments').add(d),'Pago guardado'))closeDrawer();return}
+    let wr;
+    if(d.kind==='annual'){const cc=clientById(cid),y=annualCycle(cc).y;d.year=y;wr=()=>S.db.doc('payments/'+cid+'_annual_'+y).set(d)}else wr=()=>S.db.collection('payments').add(d);
+    if(await write(wr,'Pago guardado'))closeDrawer();return}
   if(f.id==='contactForm'){const c=clientById(S.clientId);if(!c)return;const x={};['name','role','email','phone'].forEach(k=>x[k]=(f.elements[k].value||'').trim());if(!x.name)return;
     const ok=await write(()=>S.db.doc('clients/'+c.id).update({contacts:[...(c.contacts||[]),x]}),'Contacto añadido');
     if(ok){S.contactForm=false;render()}return}
@@ -1115,8 +1205,8 @@ document.addEventListener('submit',async e=>{
     const ok=id?await write(()=>S.db.doc('events/'+id).update(d),'Evento actualizado'):await write(()=>S.db.collection('events').add({...d,createdAt:d.updatedAt,createdBy:S.me||null}),'Evento guardado');
     if(ok){closeDrawer();if(S.tab==='calendario'){S.month=d.date.slice(0,7);S.selDay=d.date;render()}}return}
   if(f.id==='clientForm'){const id=f.dataset.id;const d={};
-    ['name','contact','stage','plan','start','owner','payer','nextAction','nextDate','notes','company','taxId','sector','web','address','feeFrom'].forEach(k=>d[k]=(f.elements[k].value||'').trim());
-    d.fee=parseFloat(f.elements.fee.value)||0;d.setupPrice=parseFloat(f.elements.setupPrice.value)||0;d.dueDay=parseInt(f.elements.dueDay.value)||null;d.updatedAt=new Date().toISOString();
+    ['name','contact','stage','plan','planType','renewDate','start','owner','payer','nextAction','nextDate','notes','company','taxId','sector','web','address','feeFrom'].forEach(k=>d[k]=(f.elements[k].value||'').trim());
+    d.fee=parseFloat(f.elements.fee.value)||0;d.annualFee=parseFloat(f.elements.annualFee.value)||0;d.setupPrice=parseFloat(f.elements.setupPrice.value)||0;d.dueDay=parseInt(f.elements.dueDay.value)||null;d.updatedAt=new Date().toISOString();
     if(!d.name)return;
     let nid=null;
     const ok=id?await write(()=>S.db.doc('clients/'+id).update(d),'Cambios guardados'):await write(async()=>{const r=await S.db.collection('clients').add({...d,createdAt:d.updatedAt,createdBy:S.me||null});nid=r.id},'Cliente añadido');
