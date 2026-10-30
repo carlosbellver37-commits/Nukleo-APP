@@ -398,6 +398,55 @@ i.due{background:repeating-linear-gradient(-45deg,var(--ink) 0 1.5px,transparent
 .lerr.bad{color:var(--ink);font-weight:600;border:1.5px solid var(--ink);background:repeating-linear-gradient(-45deg,var(--bad-soft) 0 6px,var(--surface) 6px 12px);padding:8px 10px;border-radius:8px}
 .lerr.ok{color:var(--ink);background:var(--raise);padding:8px 10px;border-radius:8px}
 #logout{flex:none}
+/* ===== Color: base blanco/negro, color solo para lo importante ===== */
+:root{
+  --accent:#2B50F5; --accent-ink:#FFFFFF; --accent-soft:#E7ECFF;
+  --ok:#12A150; --ok-soft:#DDF5E7; --warn:#C77700; --warn-soft:#FFF1D6; --bad:#E0272D; --bad-soft:#FDE3E4;
+  --brand:#2B50F5; --brand-ink:#FFFFFF; --brand-soft:#E7ECFF;
+  --ring:#3DDC84; --bar:#C9D2F5;
+  --s-lead:#B8B8B8; --s-contactado:#4DA3FF; --s-reunion:#8B5CF6; --s-propuesta:#F5A524; --s-construccion:#F97316; --s-activo:#12A150; --s-pausado:#9A9A9A; --s-perdido:#E0272D;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --accent:#6C86FF; --accent-ink:#0A0A0A; --accent-soft:#1B2250;
+  --ok:#3DDC84; --ok-soft:#10301F; --warn:#FFB84D; --warn-soft:#3A2A0C; --bad:#FF6368; --bad-soft:#3A1416;
+  --brand:#6C86FF; --brand-ink:#0A0A0A; --brand-soft:#1B2250;
+  --ring:#3DDC84; --bar:#33407F;
+  --s-lead:#6B6B6B; --s-contactado:#5DB0FF; --s-reunion:#A78BFA; --s-propuesta:#FFB84D; --s-construccion:#FB923C; --s-activo:#3DDC84; --s-pausado:#7A7A7A; --s-perdido:#FF6368;
+}}
+:root[data-theme="dark"]{
+  --accent:#6C86FF; --accent-ink:#0A0A0A; --accent-soft:#1B2250;
+  --ok:#3DDC84; --ok-soft:#10301F; --warn:#FFB84D; --warn-soft:#3A2A0C; --bad:#FF6368; --bad-soft:#3A1416;
+  --brand:#6C86FF; --brand-ink:#0A0A0A; --brand-soft:#1B2250;
+  --ring:#3DDC84; --bar:#33407F;
+  --s-lead:#6B6B6B; --s-contactado:#5DB0FF; --s-reunion:#A78BFA; --s-propuesta:#FFB84D; --s-construccion:#FB923C; --s-activo:#3DDC84; --s-pausado:#7A7A7A; --s-perdido:#FF6368;
+}
+.dot{box-shadow:none}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn);box-shadow:none}
+.pill.bad{background:var(--bad);color:#fff;box-shadow:none}
+.pill.bad::before{transform:none;border-radius:50%}
+.banner.bad,.lerr.bad{border:1.5px solid var(--bad);background:var(--bad-soft);color:var(--bad)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.ok:hover{background:var(--ok);filter:brightness(1.08);color:#fff}
+.btn.danger{color:var(--bad)}
+.mc.paid i{background:var(--ok);box-shadow:none}
+.mc.late i{background:var(--bad);box-shadow:none}
+.mc.due i{background:var(--warn-soft);box-shadow:inset 0 0 0 1.5px var(--warn)}
+i.ev{background:var(--accent)} i.act{box-shadow:inset 0 0 0 1.5px var(--warn)} i.due{background:var(--bad);box-shadow:none}
+.it.ev,.ag.ev{background:var(--accent);color:var(--accent-ink)}
+.it.act{box-shadow:inset 0 0 0 1px var(--warn);background:var(--warn-soft);color:var(--warn)}
+.it.due{background:var(--bad-soft);color:var(--bad);box-shadow:none}
+.ag.due{background:var(--bad-soft);box-shadow:inset 3px 0 0 var(--bad)}
+.progress i.on{background:var(--ok)}
+.seg button[aria-selected="true"]{color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.08),0 0 0 1px var(--accent)}
+.bnav button[aria-current="true"]{color:var(--accent)}
+.bnav button[aria-current="true"] .ic{background:var(--accent-soft);color:var(--accent)}
+.fab{background:var(--accent);color:var(--accent-ink)}
+.note{border-left-color:var(--accent)}
+.hero .save{background:var(--ring);color:#04210F}
+.hero .big{color:var(--ring)}
+.hk>div:nth-child(1) .v{color:var(--warn-soft)}
+.hk>div:nth-child(3) .v{color:var(--ring)}
 </style>
 </head>
 <body>
@@ -595,7 +644,7 @@ function ring(col,goal,exp){
   return `<div class="ring" role="img" aria-label="${goal?Math.round(col/goal*100)+'% del objetivo':'Sin objetivo'}"><svg viewBox="0 0 150 150">
     <circle cx="75" cy="75" r="${R}" fill="none" stroke="var(--hero-line)" stroke-width="12"/>
     ${goal?`<circle cx="75" cy="75" r="${R}" fill="none" stroke="var(--hero-muted)" stroke-opacity=".35" stroke-width="12" stroke-dasharray="${C*f} ${C}" stroke-linecap="round"/>
-    <circle cx="75" cy="75" r="${R}" fill="none" stroke="var(--hero-ink)" stroke-width="12" stroke-dasharray="${Math.max(.001,C*p)} ${C}" stroke-linecap="round" style="transition:stroke-dasharray .6s"/>`:''}
+    <circle cx="75" cy="75" r="${R}" fill="none" stroke="var(--ring)" stroke-width="12" stroke-dasharray="${Math.max(.001,C*p)} ${C}" stroke-linecap="round" style="transition:stroke-dasharray .6s"/>`:''}
   </svg><div class="c"><b>${goal?Math.round(col/goal*100)+'%':'—'}</b><span>${goal?'del objetivo':'sin objetivo'}</span></div></div>`;
 }
 
@@ -629,7 +678,7 @@ function vResumen(){
   [0.25,0.5,0.75].forEach(t=>svg+=`<line x1="${pl}" x2="${W-pl}" y1="${pt+(H-pt-pb)*t}" y2="${pt+(H-pt-pb)*t}" stroke="var(--line)" stroke-dasharray="2 4"/>`);
   svg+=`<line x1="${pl}" x2="${W-pl}" y1="${H-pb}" y2="${H-pb}" stroke="var(--line)"/>`;
   data.forEach((d,i)=>{const cx=pl+i*bw+bw/2,bwid=Math.min(46,bw*0.5);const cur=d.m===m;const hgt=Math.max(0,H-pb-y(d.c));
-    if(d.c) svg+=`<rect x="${cx-bwid/2}" y="${y(d.c)}" width="${bwid}" height="${hgt}" rx="6" fill="${cur?'var(--ink)':'var(--bar)'}"/>`;
+    if(d.c) svg+=`<rect x="${cx-bwid/2}" y="${y(d.c)}" width="${bwid}" height="${hgt}" rx="6" fill="${cur?'var(--accent)':'var(--bar)'}"/>`;
     else svg+=`<rect x="${cx-bwid/2}" y="${H-pb-3}" width="${bwid}" height="3" rx="1.5" fill="var(--line)"/>`;
     if(d.g) svg+=`<line x1="${cx-bwid/2-7}" x2="${cx+bwid/2+7}" y1="${y(d.g)}" y2="${y(d.g)}" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 5"/>`;
     if(d.c) svg+=`<text x="${cx}" y="${y(d.c)-7}" text-anchor="middle" font-size="11" fill="${cur?'var(--ink)':'var(--muted)'}" font-family="IBM Plex Mono,monospace" font-weight="${cur?600:400}">${Math.round(d.c)}€</text>`;
@@ -852,7 +901,7 @@ function vCliente(){
     <div style="display:grid;gap:18px;align-content:start;min-width:0">
       <section class="panel"><div class="ph"><h2>Pagos</h2><span class="sub">últimos 12 meses</span></div>${saleBox(c)}
         <div class="mgrid">${states.map(x=>`<span class="mc ${x.s}" title="${esc(mLabel(x.m))}: ${lbl[x.s]}"><span>${esc(mLabel(x.m,true))}</span><i></i></span>`).join('')}</div>
-        <div class="mlegend"><span><i style="background:var(--ink)"></i>Pagado</span><span><i style="background:repeating-linear-gradient(-45deg,var(--ink) 0 2px,transparent 2px 5px);box-shadow:inset 0 0 0 1.5px var(--ink)"></i>Atrasado</span><span><i style="box-shadow:inset 0 0 0 1.5px var(--ink)"></i>Pendiente</span></div>
+        <div class="mlegend"><span><i style="background:var(--ok)"></i>Pagado</span><span><i style="background:var(--bad)"></i>Atrasado</span><span><i style="background:var(--warn-soft);box-shadow:inset 0 0 0 1.5px var(--warn)"></i>Pendiente</span></div>
         <div class="list" style="margin-top:14px">${pays.length?pays.slice(0,20).map(p=>`<div class="li"><div style="min-width:0"><div class="t">${payLabel(p)?esc(payLabel(p)):esc(mLabel(p.month))}</div><div class="m">${fmtDate(p.date)} · ${esc(p.method||'')}${p.by?` · por <span data-uid="${esc(p.by)}">…</span>`:''}</div></div><span class="arow" style="gap:6px;flex-wrap:nowrap"><span class="num" style="font-weight:600">${fmtEur(p.amount)}</span>${p.kind?`<button class="btn ghost sm" data-act="delPay" data-pid="${esc(p.id)}" aria-label="Quitar pago" ${ro()}>Quitar</button>`:''}</span></div>`).join(''):`<div class="empty">${emptyIcon}Todavía no hay pagos registrados.</div>`}</div></section>
       <section class="panel"><div class="ph"><h2>Reuniones</h2><button class="btn sm" data-act="evNew" data-client="${c.id}" ${ro()}>+ Nueva</button></div>
         <div class="aglist">${up.length?up.map(e=>evRow(e,'ev')).join(''):`<div class="empty">${emptyIcon}No hay reuniones próximas.</div>`}</div>
