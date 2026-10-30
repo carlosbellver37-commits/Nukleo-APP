@@ -639,7 +639,16 @@ const PLANS={proyecto:'Solo proyecto',membresia:'Membresía mensual',cambios:'Po
 const planOf=c=>c.planType||((+c.fee||0)>0?'membresia':'');
 const planLabel=c=>PLANS[planOf(c)]||'Sin plan elegido';
 const DEPOSIT=.3;
-const annualCycle=c=>{const d0=c.renewDate||c.start||todayISO();const y0=+d0.slice(0,4);let md=d0.slice(5);if(md==='02-29')md='02-28';let y=y0;while(S.payments[c.id+'_annual_'+y]&&y<y0+40)y++;return {y,date:y+'-'+md}};
+const addYears=(iso,n)=>{let y=+iso.slice(0,4)+n,md=iso.slice(5);if(md==='02-29'&&!(y%4===0&&(y%100!==0||y%400===0)))md='02-28';return y+'-'+md};
+const annualCycle=c=>{
+  // El plan anual se cobra 1 año después del primer pago (o en la fecha fijada a mano).
+  const ps=Object.values(S.payments).filter(p=>p.clientId===c.id&&p.date);
+  const pre=ps.filter(p=>p.kind!=='annual').map(p=>p.date).sort()[0]||ps.map(p=>p.date).sort()[0];
+  const d0=c.renewDate||(pre?addYears(pre,1):'');
+  if(!d0)return {y:+todayISO().slice(0,4),date:'',base:''};
+  const y0=+d0.slice(0,4);let y=y0;while(S.payments[c.id+'_annual_'+y]&&y<y0+40)y++;
+  return {y,date:addYears(d0,y-y0),base:d0};
+};
 const activeFor=m=>S.clients.filter(c=>c.stage==='activo'&&planOf(c)==='membresia'&&(+c.fee||0)>0&&(!feeStartM(c)||feeStartM(c)<=m));
 const paysInMonth=m=>Object.values(S.payments).filter(p=>p.month===m);
 const collected=m=>paysInMonth(m).reduce((a,p)=>a+(+p.amount||0),0);
@@ -850,7 +859,7 @@ function pendingBreakdown(m){
   const mem=memRows.reduce((a,c)=>a+(+c.fee||0),0);
   const pj=S.clients.filter(c=>SOLD.includes(c.stage)&&projectLeft(c)>0);
   const proj=pj.reduce((a,c)=>a+projectLeft(c),0);
-  const an=S.clients.filter(c=>planOf(c)==='anual'&&SOLD.includes(c.stage)&&(+c.annualFee||0)>0&&annualCycle(c).date.slice(0,7)<=m);
+  const an=S.clients.filter(c=>planOf(c)==='anual'&&SOLD.includes(c.stage)&&(+c.annualFee||0)>0&&annualCycle(c).date&&annualCycle(c).date.slice(0,7)<=m);
   const ann=an.reduce((a,c)=>a+(+c.annualFee),0);
   return {mem,proj,ann,total:mem+proj+ann,memN:memRows.length,projN:pj.length,annN:an.length};
 }
@@ -877,10 +886,10 @@ function planLine(c,m,plan){
     return h;
   }
   if(plan==='anual'){
-    const cy=annualCycle(c),last=S.payments[c.id+'_annual_'+(cy.y-1)],late=cy.date<t,soon=!late&&cy.date<=addDays(t,30);
-    return `<div class="pl"><span class="num" style="font-weight:600">${(+c.annualFee)?fmtEur(c.annualFee):'<span class="muted">Sin importe</span>'}<span class="muted" style="font-weight:400">/año</span></span><span class="pill ${late?'bad':soon?'warn':'off'}">${late?'Atrasado':soon?'Vence pronto':'Al día'}</span></div>
-    <div class="pl2"><span class="muted">${last?'Último '+fmtDate(last.date)+' · ':''}Renueva ${fmtDate(cy.date)}</span></div>
-    <button class="btn ok sm full" data-act="oneOff" data-id="${c.id}" data-k="annual" ${ro()}>✓ Marcar recibido</button>`;
+    const cy=annualCycle(c),last=S.payments[c.id+'_annual_'+(cy.y-1)],late=!!cy.date&&cy.date<t,soon=!!cy.date&&!late&&cy.date<=addDays(t,30);
+    return `<div class="pl"><span class="num" style="font-weight:600">${(+c.annualFee)?fmtEur(c.annualFee):'<span class="muted">Sin importe</span>'}<span class="muted" style="font-weight:400">/año</span></span><span class="pill ${!cy.date?'off':late?'bad':soon?'warn':'off'}">${!cy.date?'Sin primer pago':late?'Atrasado':soon?'Vence pronto':'Al día'}</span></div>
+    <div class="pl2"><span class="muted">${cy.date?(last?'Último '+fmtDate(last.date)+' · ':'')+'Se cobra el '+fmtDate(cy.date)+(c.renewDate?'':' (1 año tras el primer pago)'):'Se cobra 1 año después del primer pago'}</span></div>
+    ${cy.date&&(late||soon)?`<button class="btn ok sm full" data-act="oneOff" data-id="${c.id}" data-k="annual" ${ro()}>✓ Marcar recibido</button>`:cy.date?`<button class="btn ghost sm full" data-act="oneOff" data-id="${c.id}" data-k="annual" ${ro()}>Registrar cobro anual</button>`:''}`;
   }
   if(plan==='cambios'){
     const ex=oneOffs(c.id).filter(p=>p.kind==='extra'),mm=ex.filter(p=>p.month===m).reduce((a,p)=>a+(+p.amount||0),0),tot=ex.reduce((a,p)=>a+(+p.amount||0),0);
@@ -923,7 +932,7 @@ function dayItems(m){
   S.clients.forEach(c=>{if(c.nextDate&&c.nextDate.slice(0,7)===m&&c.stage!=='perdido')push(c.nextDate,{k:'act',id:c.id,time:'',title:(c.nextAction||'Seguimiento')+' · '+c.name,sub:stageLabel(c.stage)})});
   const [y,mo]=m.split('-').map(Number),dim=new Date(y,mo,0).getDate();
   activeFor(m).forEach(c=>{if(c.dueDay&&!payFor(c.id,m))push(m+'-'+pad(Math.min(+c.dueDay,dim)),{k:'due',id:c.id,time:'',title:'Cobro · '+c.name,sub:fmtEur(c.fee)})});
-  S.clients.filter(c=>planOf(c)==='anual'&&!['perdido','lead'].includes(c.stage)).forEach(c=>{const cy=annualCycle(c);if(cy.date.slice(0,7)===m)push(cy.date,{k:'due',id:c.id,time:'',title:'Renovación anual · '+c.name,sub:fmtEur(c.annualFee)})});
+  S.clients.filter(c=>planOf(c)==='anual'&&!['perdido','lead'].includes(c.stage)).forEach(c=>{const cy=annualCycle(c);if(cy.date&&cy.date.slice(0,7)===m)push(cy.date,{k:'due',id:c.id,time:'',title:'Renovación anual · '+c.name,sub:fmtEur(c.annualFee)})});
   const o={ev:0,act:1,due:2};
   Object.values(out).forEach(l=>l.sort((a,b)=>o[a.k]-o[b.k]||(a.time||'99').localeCompare(b.time||'99')));
   return out;
@@ -1055,7 +1064,7 @@ function vCliente(){
   return `<div class="crumb"><button class="btn ghost sm" data-act="back">← Todos los clientes</button></div>
   <section class="panel acct"><div class="acct-top"><div class="who" style="gap:16px;align-items:flex-start">${av(c.name,'xl')}<div style="min-width:0"><h2 class="acct-name">${esc(c.name)}</h2><div class="m">${esc([c.company,c.sector].filter(Boolean).join(' · ')||'Añade la razón social y el sector en Editar datos')}</div><div class="arow" style="margin-top:10px">${stageMenuBtn(c)}<span class="spill">${esc(planLabel(c))}</span>${curSt?`<span class="pill ${curSt.k}">${esc(mLabel(cur,true))}: ${curSt.l}</span>`:''}</div></div></div>
     <div class="acct-actions"><button class="btn" data-act="editClient" data-id="${c.id}">Editar datos</button><button class="btn" data-act="evNew" data-client="${c.id}" ${ro()}>+ Reunión</button>${curSt&&curSt.k!=='ok'?`<button class="btn primary" data-act="quickPay" data-id="${c.id}" data-m="${cur}" ${ro()}>✓ Cobro de ${esc(mLabel(cur,true).toLowerCase())}</button>`:''}</div></div>
-    <div class="kstrip"><div><span class="label">${planOf(c)==='anual'?'Plan anual':'Cuota'}</span><b class="num">${planOf(c)==='anual'?((+c.annualFee)?fmtEur(c.annualFee):'—'):c.fee?fmtEur(c.fee):'—'}</b><span class="m">${planOf(c)==='anual'?'renueva el '+fmtDate(annualCycle(c).date):planOf(c)==='cambios'?'cada cambio se cobra aparte':c.fee?(c.dueDay?'el día '+esc(c.dueDay)+' de cada mes':'al mes')+(c.feeFrom&&c.feeFrom>cur?' · desde '+esc(mLabel(c.feeFrom,true).toLowerCase()):''):'sin cuota'}</span></div><div><span class="label">Cobrado total</span><b class="num">${fmtEur(total)}</b><span class="m">${pays.length} pago${pays.length===1?'':'s'}</span></div><div><span class="label">Cliente desde</span><b class="num">${c.start?fmtDate(c.start):'—'}</b><span class="m">${c.start?monthsSince(c.start):'sin fecha de alta'}</span></div><div><span class="label">Meses atrasados</span><b class="num">${late}</b><span class="m">últimos 12 meses</span></div></div></section>
+    <div class="kstrip"><div><span class="label">${planOf(c)==='anual'?'Plan anual':'Cuota'}</span><b class="num">${planOf(c)==='anual'?((+c.annualFee)?fmtEur(c.annualFee):'—'):c.fee?fmtEur(c.fee):'—'}</b><span class="m">${planOf(c)==='anual'?(annualCycle(c).date?'se cobra el '+fmtDate(annualCycle(c).date):'1 año después del primer pago'):planOf(c)==='cambios'?'cada cambio se cobra aparte':c.fee?(c.dueDay?'el día '+esc(c.dueDay)+' de cada mes':'al mes')+(c.feeFrom&&c.feeFrom>cur?' · desde '+esc(mLabel(c.feeFrom,true).toLowerCase()):''):'sin cuota'}</span></div><div><span class="label">Cobrado total</span><b class="num">${fmtEur(total)}</b><span class="m">${pays.length} pago${pays.length===1?'':'s'}</span></div><div><span class="label">Cliente desde</span><b class="num">${c.start?fmtDate(c.start):'—'}</b><span class="m">${c.start?monthsSince(c.start):'sin fecha de alta'}</span></div><div><span class="label">Meses atrasados</span><b class="num">${late}</b><span class="m">últimos 12 meses</span></div></div></section>
   <div class="two">
     <div style="display:grid;gap:18px;align-content:start;min-width:0">
       <section class="panel"><div class="ph"><h2>Datos de la empresa</h2><button class="btn sm" data-act="editClient" data-id="${c.id}">Editar</button></div>${dl([['Razón social',c.company],['CIF / NIF',c.taxId],['Sector',c.sector],['Web',web,1],['Dirección',c.address],['Contacto',c.contact],['Responsable',c.owner],['Nombre en Revolut',c.payer]])}</section>
@@ -1174,7 +1183,7 @@ function openDrawer(id){
       </div>
       <div class="pf" data-pf="anual" ${planOf(c)==='anual'?'':'hidden'}>
       ${f('annualFee','Cuota anual (€)','number')}
-      ${f('renewDate','Primera renovación','date')}
+      <label class="field"><span>Fecha del cobro anual</span><input id="f_renewDate" name="renewDate" type="date" value="${esc(c.renewDate??'')}"><em>Déjalo vacío: se cobra 1 año después del primer pago.</em></label>
       </div>
       ${f('start','Fecha de alta','date')}
       <label class="field full"><span>Nombre en Revolut</span><input id="f_payer" name="payer" value="${esc(c.payer||'')}"><em>Cómo aparece en el concepto del pago, si no coincide con el nombre.</em></label>
