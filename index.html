@@ -899,7 +899,7 @@ function planLine(c,m,plan){
 }
 function cobCard(c,m,plan){
   return `<div class="ccard"><div class="cch">${dragH(c)}${av(c.name)}<div style="min-width:0;flex:1"><button class="ccn" data-act="edit" data-id="${c.id}">${esc(c.name)}</button><div class="m">${esc(stageLabel(c.stage))}</div></div></div>
-  ${planLine(c,m,plan)}${projectLine(c)}${planSelect(c)}</div>`;
+  ${planLine(c,m,plan)}${(plan==='membresia'||plan==='anual')?`<button class="btn ghost sm" style="justify-self:start;padding-left:0" data-act="oneOff" data-id="${c.id}" data-k="extra" ${ro()}>+ Cambio (se cobra aparte)</button>`:''}${projectLine(c)}${planSelect(c)}</div>`;
 }
 function vCobros(){
   const m=S.month;
