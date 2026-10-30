@@ -615,6 +615,30 @@ body.dragging .zone{box-shadow:inset 0 0 0 1.5px var(--line)}
 .bld-hint{text-align:center;font-family:var(--f-mono);font-size:12px;color:var(--muted);margin:12px 0 4px}
 .bld .street{height:34px}.bld .bush{top:-8px}
 @media (max-width:520px){.bld .ant{height:28px;bottom:30px}.bld .beacon{bottom:56px}}
+
+/* ===== isométrico ===== */
+.bld{padding:18px 0 22px;max-width:760px}
+.bld{width:100%;box-sizing:border-box}
+.iso{--mh:min(92vh,1000px);position:relative;margin:0 auto;aspect-ratio:var(--ar);width:100%;max-width:calc(var(--mh) * var(--ar));filter:drop-shadow(0 12px 0 rgba(0,0,0,.14))}
+.iso canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;image-rendering:pixelated}
+.isoO{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.isoO .hit{cursor:pointer;outline:none}
+.isoO .hit polygon{fill:transparent;stroke:transparent;stroke-width:.9;stroke-linejoin:miter;transition:fill .1s}
+.isoO .hit:hover polygon,.isoO .hit:focus-visible polygon{fill:rgba(255,200,61,.16);stroke:#FFC83D}
+.isoO text{font-family:'Silkscreen','IBM Plex Mono',monospace;pointer-events:none;user-select:none}
+.isoO .nm{font-size:4px;font-weight:700;fill:#fff;letter-spacing:.2px}
+.isoO .sx{font-size:3.3px;fill:#C9CBD8;font-family:'IBM Plex Mono',monospace}
+.isoO .sx.warn{fill:#FFC83D}
+.isoO .sgn{font-size:9px;font-weight:700;fill:#fff;letter-spacing:.3px}
+.isoO .lmp,.isoO .bcn{animation:blink 1.2s steps(2) infinite}
+.isoO .lmp{fill:#FFC83D}.isoO .bcn{fill:#E5484D}
+@media (max-width:520px){.bld{padding-top:10px}}
+
+.bld{padding-bottom:30px}
+.bld::after{content:"";position:absolute;left:0;right:0;bottom:0;height:52px;z-index:-1;background:linear-gradient(180deg,#6BBF64 0 30%,#5BA85B 30% 62%,#4A9249 62% 100%)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .bld::after{background:linear-gradient(180deg,#244A33 0 30%,#1E3B2A 30% 62%,#173022 62% 100%)}}
+:root[data-theme="dark"] .bld::after{background:linear-gradient(180deg,#244A33 0 30%,#1E3B2A 30% 62%,#173022 62% 100%)}
+.iso{margin-bottom:-4px}
 </style>
 </head>
 <body>
@@ -785,47 +809,157 @@ document.getElementById('forgot').onclick=async()=>{
 };
 
 /* ---------- render ---------- */
-/* ---------- Edificio (pantalla de inicio en pixel art) ---------- */
-const PXR=l=>l.map(r=>`<rect x="${r[0]}" y="${r[1]}" width="${r[2]}" height="${r[3]}" class="${r[4]}"/>`).join('');
-const roomBase=()=>PXR([[0,0,48,24,'k-wall'],[0,24,48,1,'k-base'],[0,25,48,3,'k-floor'],[22,0,4,1,'k-lamp'],
-  [3,4,14,11,'k-frame'],[4,5,12,9,'k-win'],[9,5,1,9,'k-frame'],[4,9,12,1,'k-frame'],[5,6,3,1,'k-cloud'],[6,5,2,1,'k-cloud'],[11,11,4,1,'k-cloud'],[12,10,2,1,'k-cloud'],
-  [2,15,16,1,'k-sill']]);
-const desk=()=>PXR([[20,19,24,2,'k-desk'],[21,21,2,3,'k-desk2'],[41,21,2,3,'k-desk2']]);
-const worker=(x,shirt,hair)=>`<g class="wk">`+PXR([[x,9,4,2,hair],[x,10,4,4,'k-skin'],[x+1,11,1,1,'k-eye'],[x+2,11,1,1,'k-eye'],[x-1,14,6,5,shirt],[x-2,16,1,3,'k-skin'],[x+5,16,1,3,'k-skin']])+`</g>`;
-const monitor=(x,scr)=>PXR([[x,13,8,6,'k-dark'],[x+1,14,6,4,'k-screen'],[x+3,19,2,1,'k-dark']])+scr;
-const SCENES={
-  resumen:()=>roomBase()+PXR([[19,2,26,7,'k-dark'],[21,7,2,1,'k-green'],[24,6,2,2,'k-green'],[27,5,2,3,'k-green'],[30,4,2,4,'k-green'],[33,4,2,4,'k-yel'],[36,3,2,5,'k-yel'],[40,3,3,3,'k-ring'],[41,4,1,1,'k-dark']])+desk()+worker(26,'k-s1','k-h1')+monitor(35,PXR([[36,17,1,1,'k-green'],[38,16,1,2,'k-green'],[40,15,1,3,'k-yel']]))+PXR([[45,14,3,5,'k-pot'],[44,10,5,4,'k-leaf'],[45,8,3,3,'k-leaf']]),
-  calendario:()=>roomBase()+PXR([[19,2,12,7,'k-white'],[19,2,12,2,'k-red'],[21,5,1,1,'k-gray'],[23,5,1,1,'k-gray'],[25,5,1,1,'k-gray'],[27,5,1,1,'k-gray'],[29,5,1,1,'k-gray'],[21,7,1,1,'k-gray'],[23,7,1,1,'k-gray'],[25,7,2,1,'k-red'],[29,7,1,1,'k-gray'],[35,3,6,6,'k-white'],[36,4,4,4,'k-gray'],[37,5,1,2,'k-dark'],[37,6,2,1,'k-dark']])+desk()+worker(26,'k-s2','k-h2')+monitor(35,PXR([[36,15,5,1,'k-orange'],[36,17,3,1,'k-orange']]))+PXR([[45,14,3,5,'k-pot'],[44,10,5,4,'k-leaf']]),
-  pipeline:()=>roomBase()+PXR([[19,2,26,7,'k-white'],[28,2,1,7,'k-gray'],[37,2,1,7,'k-gray'],[20,3,7,2,'k-blue'],[20,6,7,2,'k-purple'],[29,3,7,2,'k-orange'],[29,6,7,2,'k-yel'],[38,3,6,2,'k-green'],[38,6,6,2,'k-green']])+desk()+worker(26,'k-s3','k-h1')+monitor(35,PXR([[36,15,2,2,'k-blue'],[39,15,2,2,'k-green']]))+PXR([[45,14,3,5,'k-pot'],[44,10,5,4,'k-leaf']]),
-  clientes:()=>roomBase()+PXR([[19,3,9,11,'k-gray'],[19,7,9,1,'k-dark2'],[19,11,9,1,'k-dark2'],[22,5,3,1,'k-dark'],[22,9,3,1,'k-dark'],[22,13,3,1,'k-dark'],[29,6,8,8,'k-gray2'],[29,10,8,1,'k-dark2'],[32,8,2,1,'k-dark'],[32,12,2,1,'k-dark'],[20,1,3,2,'k-blue'],[24,1,3,2,'k-green']])+desk()+worker(41,'k-s4','k-h2')+monitor(30,PXR([[31,15,6,1,'k-green'],[31,17,4,1,'k-green']]))+PXR([[22,17,4,2,'k-white'],[22,16,4,1,'k-yel']]),
-  cobros:()=>roomBase()+PXR([[18,3,11,11,'k-gray'],[20,5,7,7,'k-dark2'],[22,7,3,3,'k-yel'],[23,8,1,1,'k-dark'],[27,7,1,3,'k-white'],[33,3,5,1,'k-yel'],[32,4,1,5,'k-yel'],[33,9,5,1,'k-yel'],[31,5,5,1,'k-yel'],[31,7,5,1,'k-yel']])+desk()+worker(41,'k-s1','k-h1')+monitor(31,PXR([[32,15,2,3,'k-green'],[35,16,2,2,'k-yel']]))+PXR([[22,16,4,3,'k-yel'],[22,15,4,1,'k-yel2'],[27,17,3,2,'k-yel'],[27,16,3,1,'k-yel2']]),
-  revolut:()=>roomBase()+PXR([[19,3,9,11,'k-dark'],[21,5,1,1,'k-green'],[21,8,1,1,'k-green'],[21,11,1,1,'k-yel'],[23,5,3,1,'k-gray'],[23,8,3,1,'k-gray'],[23,11,3,1,'k-gray'],[31,3,9,11,'k-white'],[33,5,5,1,'k-gray'],[33,7,5,1,'k-gray'],[33,9,3,1,'k-gray'],[33,12,5,2,'k-green']])+desk()+PXR([[28,16,10,3,'k-gray2'],[29,14,8,2,'k-white'],[30,15,6,1,'k-gray']])+`<g class="wk">`+PXR([[42,11,5,4,'k-gray'],[43,12,1,1,'k-green'],[45,12,1,1,'k-green'],[43,15,3,4,'k-gray2'],[44,9,1,2,'k-gray']])+`</g>`
+/* ---------- Edificio isométrico en pixel art (cara izquierda abierta) ---------- */
+const ISO={RW:48,N:2,D:8,T:8,H:36,FL:3,PAD:8,PL:8,RT:6,SG:14};
+const ISO_LAYOUT=[['cobros','revolut'],['pipeline','clientes'],['resumen','calendario']]; // planta 0 = abajo; [lejos, cerca]
+const ISO_NAMES={resumen:'RESUMEN',calendario:'CALENDARIO',pipeline:'PIPELINE',clientes:'CLIENTES',cobros:'COBROS',revolut:'REVOLUT'};
+const isoDark=()=>{const t=document.documentElement.dataset.theme;return t==='dark'||(t!=='light'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)};
+const ISO_K={
+  day:{'k-floor':'#B98A5E','k-base':'#8A6340','k-frame':'#2A2A33','k-win':'#8ED0FF','k-cloud':'#FFFFFF','k-sill':'#CFC8BA','k-desk':'#9A6B3F','k-desk2':'#6F4B2B','k-dark':'#23232B','k-dark2':'#3A3A45','k-screen':'#BFE6FF','k-white':'#FBFBFB','k-gray':'#B9BCC6','k-gray2':'#9DA1AE','k-green':'#2FBF71','k-red':'#E5484D','k-yel':'#FFC83D','k-yel2':'#E0A400','k-blue':'#3E63F5','k-purple':'#8B5CF6','k-orange':'#F97316','k-ring':'#FFC83D','k-skin':'#F2C9A0','k-eye':'#23232B','k-h1':'#3B2A20','k-h2':'#C9792B','k-s1':'#3E63F5','k-s2':'#E5484D','k-s3':'#2FBF71','k-s4':'#8B5CF6','k-pot':'#B5532E','k-leaf':'#3FA34D',
+    wall:{resumen:'#D9E2FF',calendario:'#FFE6D0',pipeline:'#E7DCFF',clientes:'#D5F2E2',cobros:'#FFF0BE',revolut:'#E4E6EC'},
+    slab:'#2B2B36',slabHi:'#5A5A6B',slabTop:'#CFC3AE',face:'#B8A98C',faceD:'#9C8E73',faceBand:'#8E8168',winR:'#9AD3FF',roof:'#8C8579',roofHi:'#B0A998',sign:'#15151c',ink:'#15151c',plinth:'#6E6552',pillar:'#A99A7E'},
+  night:{'k-floor':'#5A4330','k-base':'#40301F','k-frame':'#14141C','k-win':'#FFD76A','k-cloud':'#FFE9A8','k-sill':'#555870','k-desk':'#7C5532','k-desk2':'#573B22','k-dark':'#14141C','k-dark2':'#262633','k-screen':'#7FD1FF','k-white':'#E7E9F5','k-gray':'#8E92A8','k-gray2':'#6E7290','k-green':'#2FBF71','k-red':'#E5484D','k-yel':'#FFC83D','k-yel2':'#E0A400','k-blue':'#5B7BFF','k-purple':'#9D78FF','k-orange':'#F97316','k-ring':'#FFC83D','k-skin':'#E8B98E','k-eye':'#14141C','k-h1':'#2A1D16','k-h2':'#B96F25','k-s1':'#4469FF','k-s2':'#E5484D','k-s3':'#2FBF71','k-s4':'#8B5CF6','k-pot':'#9A4526','k-leaf':'#2F8A3B',
+    wall:{resumen:'#27315F',calendario:'#4A3426',pipeline:'#3B2D63',clientes:'#22443A',cobros:'#4D4222',revolut:'#33384A'},
+    slab:'#0D0D14',slabHi:'#3A3A4E',slabTop:'#4A4658',face:'#3A3B52',faceD:'#2C2D42',faceBand:'#20213A',winR:'#FFD76A',roof:'#2E2D3E',roofHi:'#4B4961',sign:'#0D0D14',ink:'#0D0D14',plinth:'#26273A',pillar:'#44455F'}
 };
+/* escenas: listas de rectángulos [x,y,w,h,clase] sobre una pared de 48x28 */
+const sc_base=()=>[[0,24,48,1,'k-base'],[0,25,48,3,'k-floor'],[3,4,14,11,'k-frame'],[4,5,12,9,'k-win'],[9,5,1,9,'k-frame'],[4,9,12,1,'k-frame'],[5,6,3,1,'k-cloud'],[6,5,2,1,'k-cloud'],[11,11,4,1,'k-cloud'],[12,10,2,1,'k-cloud'],[2,15,16,1,'k-sill']];
+const sc_desk=()=>[[20,19,24,2,'k-desk'],[21,21,2,3,'k-desk2'],[41,21,2,3,'k-desk2']];
+const sc_worker=(x,shirt,hair,fr)=>{const d=fr?-1:0;return [[x,9+d,4,2,hair],[x,10+d,4,4,'k-skin'],[x+1,11+d,1,1,'k-eye'],[x+2,11+d,1,1,'k-eye'],[x-1,14+d,6,5-d,shirt],[x-2,16,1,3,'k-skin'],[x+5,16,1,3,'k-skin']]};
+const sc_mon=(x,scr,fr)=>[[x,13,8,6,'k-dark'],[x+1,14,6,4,'k-screen'],[x+3,19,2,1,'k-dark'],...(fr?scr:scr.map(r=>[r[0],r[1]+(r[3]>1?0:0),r[2],r[3],r[4]]))];
+const SC={
+  resumen:fr=>[...sc_base(),[19,2,26,7,'k-dark'],[21,7,2,1,'k-green'],[24,6,2,2,'k-green'],[27,5,2,3,'k-green'],[30,4,2,4,'k-green'],[33,4,2,4,'k-yel'],[36,3,2,5,'k-yel'],[40,3,3,3,'k-ring'],[41,4,1,1,'k-dark'],...sc_desk(),...sc_worker(26,'k-s1','k-h1',fr),...sc_mon(35,[[36,17,1,1,'k-green'],[38,16,1,2,'k-green'],[40,15,1,3,'k-yel']],fr),[45,14,3,5,'k-pot'],[44,10,5,4,'k-leaf'],[45,8,3,3,'k-leaf']],
+  calendario:fr=>[...sc_base(),[19,2,12,7,'k-white'],[19,2,12,2,'k-red'],[21,5,1,1,'k-gray'],[23,5,1,1,'k-gray'],[25,5,1,1,'k-gray'],[27,5,1,1,'k-gray'],[29,5,1,1,'k-gray'],[21,7,1,1,'k-gray'],[23,7,1,1,'k-gray'],[25,7,2,1,'k-red'],[29,7,1,1,'k-gray'],[35,3,6,6,'k-white'],[36,4,4,4,'k-gray'],[37,5,1,2,'k-dark'],[37,6,2,1,'k-dark'],...sc_desk(),...sc_worker(26,'k-s2','k-h2',fr),...sc_mon(35,[[36,15,5,1,'k-orange'],[36,17,3,1,'k-orange']],fr),[45,14,3,5,'k-pot'],[44,10,5,4,'k-leaf']],
+  pipeline:fr=>[...sc_base(),[19,2,26,7,'k-white'],[28,2,1,7,'k-gray'],[37,2,1,7,'k-gray'],[20,3,7,2,'k-blue'],[20,6,7,2,'k-purple'],[29,3,7,2,'k-orange'],[29,6,7,2,'k-yel'],[38,3,6,2,'k-green'],[38,6,6,2,'k-green'],...sc_desk(),...sc_worker(26,'k-s3','k-h1',fr),...sc_mon(35,[[36,15,2,2,'k-blue'],[39,15,2,2,'k-green']],fr),[45,14,3,5,'k-pot'],[44,10,5,4,'k-leaf']],
+  clientes:fr=>[...sc_base(),[19,3,9,11,'k-gray'],[19,7,9,1,'k-dark2'],[19,11,9,1,'k-dark2'],[22,5,3,1,'k-dark'],[22,9,3,1,'k-dark'],[22,13,3,1,'k-dark'],[29,6,8,8,'k-gray2'],[29,10,8,1,'k-dark2'],[32,8,2,1,'k-dark'],[32,12,2,1,'k-dark'],[20,1,3,2,'k-blue'],[24,1,3,2,'k-green'],...sc_desk(),...sc_worker(41,'k-s4','k-h2',fr),...sc_mon(30,[[31,15,6,1,'k-green'],[31,17,4,1,'k-green']],fr),[22,17,4,2,'k-white'],[22,16,4,1,'k-yel']],
+  cobros:fr=>[...sc_base(),[18,3,11,11,'k-gray'],[20,5,7,7,'k-dark2'],[22,7,3,3,'k-yel'],[23,8,1,1,'k-dark'],[27,7,1,3,'k-white'],[33,3,5,1,'k-yel'],[32,4,1,5,'k-yel'],[33,9,5,1,'k-yel'],[31,5,5,1,'k-yel'],[31,7,5,1,'k-yel'],...sc_desk(),...sc_worker(41,'k-s1','k-h1',fr),...sc_mon(31,[[32,15,2,3,'k-green'],[35,16,2,2,'k-yel']],fr),[22,16,4,3,'k-yel'],[22,15,4,1,'k-yel2'],[27,17,3,2,'k-yel'],[27,16,3,1,'k-yel2']],
+  revolut:fr=>[...sc_base(),[19,3,9,11,'k-dark'],[21,5,1,1,'k-green'],[21,8,1,1,fr?'k-green':'k-yel'],[21,11,1,1,'k-yel'],[23,5,3,1,'k-gray'],[23,8,3,1,'k-gray'],[23,11,3,1,'k-gray'],[31,3,9,11,'k-white'],[33,5,5,1,'k-gray'],[33,7,5,1,'k-gray'],[33,9,3,1,'k-gray'],[33,12,5,2,'k-green'],...sc_desk(),[28,16,10,3,'k-gray2'],[29,14,8,2,'k-white'],[30,15,6,1,'k-gray'],[42,11+(fr?-1:0),5,4,'k-gray'],[43,12+(fr?-1:0),1,1,'k-green'],[45,12+(fr?-1:0),1,1,'k-green'],[43,15,3,4,'k-gray2'],[44,9+(fr?-1:0),1,2,'k-gray']]
+};
+function isoGeo(){
+  const {RW,N,D,T,H,FL,PAD,PL,RT,SG}=ISO,U=RW*N,pitch=H+T,xb0=PAD+D,half=Math.floor((U-1)/2);
+  const Ybase=PAD+FL*pitch+half+SG+6;
+  const ybw=(f,u)=>Ybase-f*pitch-Math.floor((U-1-u)/2);
+  const W=PAD*2+D+U,Hc=Ybase+Math.floor(D/2)+T+PL+PAD;
+  return {U,pitch,xb0,Ybase,ybw,W,H:Hc,D,T,Hh:H,FL,PL,RT,SG,RW,N};
+}
+function isoLayout(){ // textos y zonas clicables
+  const G=isoGeo(),out=[];
+  ISO_LAYOUT.forEach((row,f)=>row.forEach((k,j)=>{
+    const u0=ISO.RW*j,u1=u0+ISO.RW-1,D=G.D,T=G.T,hf=Math.floor(D/2);
+    const TL=[G.xb0+u0,G.ybw(f,u0)-(ISO.H-D)+1],TR=[G.xb0+u1+1,G.ybw(f,u1)-(ISO.H-D)+1],BR=[G.xb0+u1+1-D,G.ybw(f,u1)+hf+T],BL=[G.xb0+u0-D,G.ybw(f,u0)+hf+T];
+    out.push({k,f,j,poly:[TL,TR,BR,BL].map(p=>p.join(',')).join(' '),tx:G.xb0+u0-D+2,ty:G.ybw(f,u0+2)+hf+3.6,lx:G.xb0+u1-D-4,ly:G.ybw(f,u1-4)+hf+3});
+  }));
+  return {G,offices:out};
+}
 function nextAgenda(){
   const t=todayISO(),L=[];
   S.events.forEach(e=>{if(e.date&&e.date>=t)L.push({d:e.date,t:e.time||'',n:e.title})});
   S.clients.forEach(c=>{if(c.nextDate&&c.nextDate>=t&&c.stage!=='perdido')L.push({d:c.nextDate,t:'',n:(c.nextAction||'Seguimiento')+' · '+c.name})});
   L.sort((a,b)=>(a.d+(a.t||'99')).localeCompare(b.d+(b.t||'99')));return L[0]||null;
 }
-function vEdificio(){
+const cut=(s,n)=>s.length>n?s.slice(0,n-1)+'…':s;
+function isoStats(){
   const m=S.month,goal=+S.goals[m]||0,col=collected(m),B=pendingBreakdown(m),open=S.clients.filter(c=>OPEN.includes(c.stage)).length,ag=nextAgenda(),t=todayISO();
-  const off=(k,name,stat,cls,lamp)=>`<button class="office o-${k}" data-act="goTab" data-tab="${k}" aria-label="Abrir ${name}: ${esc(stat)}">
-    <svg viewBox="0 0 48 28" shape-rendering="crispEdges" aria-hidden="true">${SCENES[k]()}</svg>${lamp?'<i class="lamp"></i>':''}
-    <span class="olab"><b>${name}</b><span class="${cls||''}">${esc(stat)}</span></span></button>`;
-  const agStat=ag?(ag.d===t?'Hoy':fmtDate(ag.d))+(ag.t?' '+ag.t:'')+' · '+ag.n:'Nada próximo';
+  return {
+    resumen:{s:fmtEur(col)+(goal?' · '+Math.round(col/goal*100)+'%':''),full:fmtEur(col)+(goal?' · '+Math.round(col/goal*100)+'% del objetivo':' · sin objetivo')},
+    calendario:{s:ag?cut((ag.d===t?'Hoy':fmtDate(ag.d).slice(0,5))+' '+ag.n,19):'Nada próximo',full:ag?'Próximo: '+(ag.d===t?'hoy':fmtDate(ag.d))+' '+ag.n:'Nada próximo',lamp:!!ag&&ag.d===t},
+    pipeline:{s:open+(open===1?' abierta':' abiertas'),full:open+' oportunidades abiertas'},
+    clientes:{s:S.clients.length+(S.clients.length===1?' negocio':' negocios'),full:S.clients.length+' negocios'},
+    cobros:{s:B.total?'Faltan '+fmtEur(B.total):'Todo al día',full:B.total?'Faltan '+fmtEur(B.total)+' por cobrar':'Todo al día',warn:B.total>0,lamp:B.total>0},
+    revolut:{s:'Subir extracto',full:'Importar el extracto CSV de Revolut'}
+  };
+}
+function vEdificio(){
+  const L=isoLayout(),G=L.G,st=isoStats();
+  const offs=L.offices.map(o=>{const s=st[o.k];
+    return `<g class="hit" tabindex="0" role="button" data-act="goTab" data-tab="${o.k}" aria-label="Abrir ${ISO_NAMES[o.k]}: ${esc(s.full)}"><polygon points="${o.poly}"/>
+    <g transform="translate(${o.tx} ${o.ty}) matrix(1 .5 0 1 0 0)"><text class="nm" x="0" y="0">${ISO_NAMES[o.k]}</text><text class="sx ${s.warn?'warn':''}" x="0" y="4.2">${esc(s.s)}</text></g>
+    ${s.lamp?`<rect class="lmp" x="${o.lx}" y="${o.ly}" width="2.4" height="2.4"/>`:''}</g>`}).join('');
+  const sg=G.xb0+14,sy=G.ybw(G.FL,14)-3.5;
   return `<section class="bld" aria-label="Edificio de nukleo.">
     <div class="sky" aria-hidden="true"><i class="sun"></i><i class="stars"></i><svg class="cl c1" viewBox="0 0 16 6" shape-rendering="crispEdges"><path class="k-cloud" d="M2 3h2V2h3V1h3v1h2v1h2v2H2z"/></svg><svg class="cl c2" viewBox="0 0 16 6" shape-rendering="crispEdges"><path class="k-cloud" d="M2 3h2V2h3V1h3v1h2v1h2v2H2z"/></svg></div>
-    <div class="tower">
-      <div class="roof" aria-hidden="true"><i class="ant"></i><i class="beacon"></i><div class="sign">nukleo.</div></div>
-      <div class="facade">
-        <div class="floor"><span class="fn" aria-hidden="true">3</span>${off('resumen','Resumen',fmtEur(col)+' · '+(goal?Math.round(col/goal*100)+'% del objetivo':'sin objetivo'),'' ,false)}${off('calendario','Calendario',agStat,'',ag&&ag.d===t)}</div>
-        <div class="floor"><span class="fn" aria-hidden="true">2</span>${off('pipeline','Pipeline',open+' oportunidad'+(open===1?'':'es')+' abierta'+(open===1?'':'s'),'',false)}${off('clientes','Clientes',S.clients.length+' negocio'+(S.clients.length===1?'':'s'),'',false)}</div>
-        <div class="floor"><span class="fn" aria-hidden="true">1</span>${off('cobros','Cobros',B.total?'Faltan '+fmtEur(B.total):'Todo al día',B.total?'warn':'good',B.total>0)}${off('revolut','Importar Revolut','Subir el extracto CSV','',false)}</div>
-      </div>
-      <div class="street" aria-hidden="true"><i class="bush b1"></i><i class="bush b2"></i></div>
+    <div class="iso" style="--ar:${G.W/G.H};--w:${G.W}">
+      <canvas id="isoC" width="${G.W}" height="${G.H}" aria-hidden="true"></canvas>
+      <svg class="isoO" viewBox="0 0 ${G.W} ${G.H}" role="group" aria-label="Oficinas">
+        <g transform="translate(${sg} ${sy}) matrix(1 .5 0 1 0 0)"><text class="sgn" x="0" y="0">nukleo.</text></g>
+        <rect class="bcn" x="${G.xb0+G.U-7}" y="${G.ybw(G.FL,G.U-7)-G.SG-3}" width="2" height="2"/>
+        ${offs}
+      </svg>
     </div>
   </section><div class="bld-hint">Toca una oficina para entrar</div>`;
 }
+/* ---- motor de píxeles ---- */
+const hex32=h=>{const n=parseInt(h.slice(1),16);return (255<<24)|((n&255)<<16)|(n&0xff00)|((n>>16)&255)};
+const shade=(h,f)=>{const n=parseInt(h.slice(1),16);const c=v=>Math.max(0,Math.min(255,Math.round(v*f)));return '#'+[c(n>>16),c((n>>8)&255),c(n&255)].map(v=>v.toString(16).padStart(2,'0')).join('')};
+let isoFrame=0;
+function paintIso(){
+  const cv=document.getElementById('isoC');if(!cv)return;
+  const G=isoGeo(),{U,xb0,ybw,D,T,FL,PL,RT,W}=G,Hc=G.H,HH=ISO.H,hf=Math.floor(D/2);
+  const K=ISO_K[isoDark()?'night':'day'],ctx=cv.getContext('2d'),img=ctx.createImageData(W,Hc),buf=new Uint32Array(img.data.buffer);
+  const px=(x,y,c)=>{if(x>=0&&y>=0&&x<W&&y<Hc)buf[y*W+x]=c};
+  const col=(x,y0,y1,c)=>{for(let y=y0;y<=y1;y++)px(x,y,c)};
+  const line=(x0,y0,x1,y1,c)=>{const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let e=dx-dy;for(;;){px(x0,y0,c);if(x0===x1&&y0===y1)break;const e2=2*e;if(e2>-dy){e-=dy;x0+=sx}if(e2<dx){e+=dx;y0+=sy}}};
+  const poly=(pts,c)=>{let mn=1e9,mx=-1e9;pts.forEach(p=>{mn=Math.min(mn,p[0]);mx=Math.max(mx,p[0])});
+    for(let x=Math.ceil(mn);x<=Math.floor(mx);x++){const xs=x+.5,ys=[];for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];if((a[0]<=xs&&b[0]>xs)||(b[0]<=xs&&a[0]>xs)){ys.push(a[1]+(b[1]-a[1])*(xs-a[0])/(b[0]-a[0]))}}
+      if(ys.length>=2){col(x,Math.round(Math.min(...ys)),Math.round(Math.max(...ys))-1,c)}}};
+  const C=n=>hex32(K[n]);
+  // 1) paredes de fondo con las escenas
+  ISO_LAYOUT.forEach((row,f)=>row.forEach((k,j)=>{
+    const wall=K.wall[k],grid=[];const Wc=hex32(wall),Wd=hex32(shade(wall,.92));
+    for(let y=0;y<28;y++)grid.push(new Array(48).fill(Wc));
+    SC[k](isoFrame).forEach(r=>{const cc=r[4]==='k-wall'?Wc:C(r[4]);for(let yy=r[1];yy<r[1]+r[3];yy++)for(let xx=r[0];xx<r[0]+r[2];xx++)if(yy>=0&&yy<28&&xx>=0&&xx<48)grid[yy][xx]=cc});
+    for(let u=0;u<48;u++){const x=xb0+ISO.RW*j+u,yb=ybw(f,ISO.RW*j+u);
+      for(let r=0;r<HH;r++){const y=yb-(HH-1)+r;px(x,y,r<HH-28?(r<HH-28-5?Wd:Wc):grid[r-(HH-28)][u])}
+      if(u===47&&j===0)col(x,yb-(HH-1),yb,hex32(K['k-frame']))}
+    // pared lateral izquierda (cara interior del extremo)
+    if(j===0)for(let c=0;c<D;c++){const x=xb0-D+c,yb=ybw(f,0)+Math.floor((D-c)/2);col(x,yb-(HH-1),yb,hex32(shade(wall,.74)))}
+  }));
+  // 2) suelos, losas y tejado
+  for(let f=0;f<=FL;f++){
+    const roof=f===FL,t=roof?RT:T;
+    const A=[xb0,ybw(f,0)],B=[xb0+U,ybw(f,U-1)],Cc=[xb0+U-D,ybw(f,U-1)+hf],Dd=[xb0-D,ybw(f,0)+hf];
+    poly([A,B,Cc,Dd],hex32(roof?K.roof:K['k-floor']));
+    if(!roof){ // moqueta clara cerca del borde
+      line(Dd[0],Dd[1],Cc[0]-1,Cc[1],hex32(K['k-sill']))}
+    // frente de losa
+    poly([Dd,Cc,[Cc[0],Cc[1]+t],[Dd[0],Dd[1]+t]],hex32(K.slab));
+    line(Dd[0],Dd[1],Cc[0]-1,Cc[1],hex32(roof?K.roofHi:K.slabHi));
+    line(Dd[0],Dd[1]+t-1,Cc[0]-1,Cc[1]+t-1,hex32(K.ink));
+    line(Dd[0],Dd[1],Dd[0],Dd[1]+t-1,hex32(K.ink));
+  }
+  // 3) cara derecha sólida
+  const xr=xb0+U-D;
+  for(let c=0;c<D;c++){const x=xr+c,rise=Math.floor(c/2);
+    const yTop=ybw(FL,U-1)+hf-rise,yBot=ybw(0,U-1)+hf-rise+T+PL;
+    col(x,yTop,yBot,hex32(c<2?K.faceD:K.face));
+    for(let f=0;f<FL;f++){ // banda de losa
+      const sb=ybw(f,U-1)+hf-rise;col(x,sb,sb+T-1,hex32(K.faceBand));
+      const rt=ybw(f+1,U-1)+hf-rise+(f+1===FL?RT:T),rb=sb-1; // hueco de la planta
+      if(c>=3&&c<=8){col(x,rt+9,rb-9,hex32(K.winR));if(c===3||c===8||true){}}
+      if(c>=3&&c<=8){px(x,rt+9,hex32(K['k-frame']));px(x,rb-9,hex32(K['k-frame']))}
+    }
+    col(x,yTop,yTop,hex32(K.ink));col(x,yBot,yBot,hex32(K.ink));
+    // zócalo
+    const pb=ybw(0,U-1)+hf-rise+T;col(x,pb,yBot,hex32(K.plinth));
+    // techo (grosor)
+    col(x,yTop,yTop+RT-1,hex32(K.roofHi));
+  }
+  col(xr,ybw(FL,U-1)+hf,ybw(0,U-1)+hf+T+PL,hex32(K.ink));
+  // marcos de ventanas
+  for(let f=0;f<FL;f++){const rt=(rise=>ybw(f+1,U-1)+hf-rise+(f+1===FL?RT:T)),sb=(rise=>ybw(f,U-1)+hf-rise);
+    [3,8].forEach(c=>{const x=xr+c,r=Math.floor(c/2);col(x,rt(r)+9,sb(r)-1-9,hex32(K['k-frame']))});
+    const mid=xr+5;col(mid,rt(2)+9,sb(2)-1-9,hex32(K['k-frame']))}
+  // pilar y borde del extremo izquierdo
+  for(let f=0;f<FL;f++){const x=xb0-D-1,yb=ybw(f,0)+hf;col(x,yb-(HH-D)-T+1+D-D,yb+T-1,hex32(K.ink))}
+  // 4) rótulo en el tejado + antena
+  const sx0=14,sw=60;
+  for(let u=sx0;u<sx0+sw;u++){const x=xb0+u,yb=ybw(FL,u)-1;col(x,yb-ISO.SG+1,yb,hex32(K.sign));px(x,yb-ISO.SG+1,hex32(K.slabHi));px(x,yb,hex32(K.ink))}
+  col(xb0+sx0,ybw(FL,sx0)-ISO.SG,ybw(FL,sx0)-1,hex32(K.ink));col(xb0+sx0+sw-1,ybw(FL,sx0+sw-1)-ISO.SG,ybw(FL,sx0+sw-1)-1,hex32(K.ink));
+  const ax=xb0+U-7;col(ax,ybw(FL,U-7)-ISO.SG-1,ybw(FL,U-7)-1,hex32(K.ink));col(ax+1,ybw(FL,U-7)-ISO.SG+2,ybw(FL,U-7)-1,hex32(K.ink));
+  ctx.putImageData(img,0,0);
+}
+setInterval(()=>{if(document.hidden)return;if(!document.getElementById('isoC'))return;isoFrame=isoFrame?0:1;paintIso()},700);
+if(window.matchMedia)try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(document.getElementById('isoC'))paintIso()})}catch(_){}
 
 function render(){
   document.getElementById('mLabel').textContent=mLabel(S.month);
@@ -853,6 +987,7 @@ function render(){
   if(fid&&fid!=='search'){const el=document.getElementById(fid);if(el)el.focus({preventScroll:true})}
   window.scrollTo(0,y);
   hydrateNames();
+  if(S.tab==='edificio')paintIso();
 }
 function hydrateNames(){document.querySelectorAll('[data-uid]').forEach(e=>{const id=e.dataset.uid,u=S.users[id];e.textContent=id===S.me?'ti':(u&&u.name)||'otra persona'})}
 const emptyIcon=`<svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="5" y="9" width="24" height="18" rx="4" fill="none" stroke="var(--line)" stroke-width="2"/><rect x="9" y="5" width="16" height="4" rx="2" fill="var(--line)"/><path d="M11 18h12" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" opacity=".5"/></svg>`;
