@@ -61,6 +61,13 @@ Abre la dirección de Vercel en el navegador del móvil y elige **Añadir a pant
 | `manifest.webmanifest`, `icon*.png`, `icon.svg`, `apple-touch-icon.png` | Icono y modo app en el móvil |
 | `vercel.json` | Cabeceras de seguridad y que Google no indexe el panel |
 
+## El mapa y los widgets
+
+La pantalla de entrada es un mapa oscuro con un pin por negocio, del color de su etapa, y los widgets (objetivo, cobros, Revolut, negocios, agenda, calendario y embudo) encima. Los widgets se arrastran entre la zona izquierda y la derecha, se pliegan y se ocultan; la distribución se guarda por usuario en `users/<uid>.layout`.
+
+- El mapa usa [MapLibre](https://maplibre.org) con los datos gratuitos de [OpenFreeMap](https://openfreemap.org) (OpenStreetMap). No necesita clave ni cuenta.
+- El botón **Ubicar por su dirección** convierte la dirección de cada ficha en coordenadas con Nominatim (OpenStreetMap) y las guarda en el cliente (`lat`, `lng`, `geoAddr`). Si no encuentra una dirección, el negocio se coloca a mano con **Ubicar**.
+
 ## Cómo se guardan los datos
 
 Los datos están en Firestore, en estas colecciones:

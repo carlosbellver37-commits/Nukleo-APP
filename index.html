@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>nukleo.</title>
-<meta name="description" content="Panel interno de nukleo: clientes, pipeline, calendario y cobros de membresías.">
+<meta name="description" content="Panel interno de nukleo: mapa de negocios, clientes, pipeline, calendario y cobros de membresías.">
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0A0A0A">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,6 +16,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,650;12..96,750&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>
 :root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0}
@@ -548,6 +549,143 @@ body.dragging .zone{box-shadow:inset 0 0 0 1.5px var(--line)}
 .smenu button:hover{background:var(--raise)}
 .smenu button.cur{font-weight:700}
 .smenu em{margin-left:auto;font-style:normal;font-size:10.5px;color:var(--muted)}
+/* ===== Mapa + widgets (solo esta pantalla es oscura) ===== */
+#mapview{--hud:rgba(12,14,18,.84);--hud-line:rgba(255,255,255,.14);--hud-ink:#ECEFF3;--hud-muted:#98A1AD;padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+.mapstage{position:relative;height:min(54vh,520px);background:#15181D;overflow:hidden;
+  --s-lead:#AEB6C0;--s-contactado:#5DB0FF;--s-reunion:#B79CFF;--s-propuesta:#FFC043;--s-construccion:#FF9A4A;--s-activo:#3DDC84;--s-pausado:#7F8792;--s-perdido:#FF6368}
+#map{position:absolute;inset:0}
+.mapstage.placing #map,.mapstage.placing .maplibregl-canvas{cursor:crosshair}
+.mmsg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:#98A1AD;font-size:13px;z-index:1}
+.mattr{position:absolute;z-index:2;left:50%;transform:translateX(-50%);bottom:4px;font-size:10px;color:#7A838F;white-space:nowrap;pointer-events:auto}
+.mattr a{color:inherit}
+.mhud{position:absolute;z-index:3;top:10px;left:10px;right:10px;display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;pointer-events:none}
+.mhud>*{pointer-events:auto}
+.mbar{display:flex;gap:2px;flex-wrap:wrap;align-items:center;background:var(--hud);border:1px solid var(--hud-line);border-radius:12px;padding:4px;color:var(--hud-ink);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);max-width:100%}
+.mbar.tools{margin-left:auto}
+.mchip{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:5px 9px;min-height:28px;border-radius:8px;font-size:11.5px;font-weight:600;letter-spacing:.02em;color:var(--hud-ink);white-space:nowrap}
+.mchip:hover{background:rgba(255,255,255,.1)}
+.mchip:focus-visible{outline:2px solid #fff;outline-offset:1px}
+.mchip[aria-pressed="false"]{color:var(--hud-muted)}
+.mchip[aria-pressed="false"] .dot{background:transparent!important;box-shadow:inset 0 0 0 1.5px var(--hud-muted)}
+.mchip .num{opacity:.7;font-size:11px}
+.mchip.hot{background:#FFC043;color:#15181D}
+.mchip.hot:hover{background:#FFD070}
+.mchip:disabled{opacity:.5;cursor:not-allowed}
+.mchip.txt{cursor:default}.mchip.txt:hover{background:none}
+.mplace{flex-basis:100%;width:max-content;padding:6px 10px;font-size:12.5px;gap:10px}
+.mplace .mchip{background:rgba(255,255,255,.12)}
+.wmw{position:relative;display:inline-flex}
+.wmenu{position:absolute;z-index:6;top:calc(100% + 8px);right:0;min-width:240px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 40px -12px rgba(0,0,0,.6);padding:6px;display:grid;gap:1px}
+.wmrow{display:flex;gap:2px}
+.wmenu button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;font-size:13px;font-weight:500}
+.wmrow button:first-child{flex:1}
+.wmenu button:hover{background:var(--raise)}
+.wmenu button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.wck{width:16px;height:16px;border-radius:5px;box-shadow:inset 0 0 0 1.5px var(--muted);display:grid;place-items:center;font-size:11px;flex:none}
+[aria-checked="true"] .wck{background:var(--ink);color:var(--surface);box-shadow:none}
+.wmreset{color:var(--muted);border-top:1px solid var(--line)!important;border-radius:0 0 8px 8px!important;margin-top:4px}
+
+/* pines */
+.pin{all:unset;cursor:pointer;display:block;position:relative}
+.pin i{display:block;width:16px;height:16px;border-radius:50%;background:var(--c);border:3px solid #0B0D10;box-shadow:0 0 0 1.5px rgba(255,255,255,.8),0 3px 8px rgba(0,0,0,.6);transition:width .15s,height .15s}
+.pin.hollow i{background:#15181D;border-color:var(--c);box-shadow:0 0 0 1.5px #0B0D10,0 3px 8px rgba(0,0,0,.6)}
+.pin span{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;font:600 11px/1.2 var(--f-body);color:#fff;text-shadow:0 0 3px #000,0 0 3px #000,0 1px 2px #000;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;opacity:0;transition:opacity .15s}
+.mapstage.zin .pin span,.pin:hover span,.pin.sel span,.pin:focus-visible span{opacity:1}
+.pin.sel i{width:22px;height:22px;box-shadow:0 0 0 3px #fff,0 0 0 7px color-mix(in srgb,var(--c) 40%,transparent),0 4px 12px rgba(0,0,0,.7)}
+.pin:focus-visible i{box-shadow:0 0 0 3px #fff}
+.pin.due::before{content:"";position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;border:2px solid var(--c);animation:pinp 1.8s ease-out infinite;pointer-events:none}
+@keyframes pinp{from{transform:scale(.9);opacity:.9}to{transform:scale(2.4);opacity:0}}
+@media (prefers-reduced-motion:reduce){.pin.due::before{animation:none;transform:scale(1.5);opacity:.6}.pin i{transition:none}}
+
+/* tarjeta del negocio */
+.mcard{margin:10px 16px 0;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 18px 50px -12px rgba(0,0,0,.75);display:grid;gap:10px;font-size:13px}
+.mch{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.mch .t{font-family:var(--f-display);font-weight:650;font-size:16px;letter-spacing:-.01em;white-space:normal;overflow-wrap:anywhere}
+.mcr{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.mstage{display:inline-flex;align-items:center;gap:6px;padding:0 4px 0 9px;border-radius:999px;background:var(--raise);box-shadow:inset 0 0 0 1px var(--line)}
+.mstage select{border:0;background:none;font-size:12px;font-weight:600;padding:4px 2px;max-width:170px}
+.mdl{margin:0;display:grid;gap:5px}
+.mdl>div{display:grid;grid-template-columns:86px minmax(0,1fr);gap:8px}
+.mdl dt{color:var(--muted);font-size:12px}
+.mdl dd{margin:0;overflow-wrap:anywhere}
+.mdl a{color:var(--accent);font-weight:600}
+.mnotes{background:var(--raise);border-radius:10px;padding:8px 10px;display:grid;gap:2px}
+.mnotes p{margin:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.mnote{display:flex;gap:6px}
+.mnote input{flex:1;min-width:0;border:1px solid var(--line);background:var(--raise);border-radius:8px;padding:6px 9px}
+
+/* widgets */
+.wzone{display:flex;flex-direction:column;gap:10px;padding:10px 16px 0}
+.wdg{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px -14px rgba(0,0,0,.55);min-width:0}
+.wdg.wsrc{display:none}
+.wh{display:flex;align-items:center;gap:6px;padding:9px 8px 9px 6px;cursor:grab;user-select:none;-webkit-user-select:none}
+.wh h2{flex:1;min-width:0;margin:0;font-family:var(--f-display);font-weight:650;font-size:14px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wgrip{color:var(--muted);font-size:13px;letter-spacing:-2px;padding:6px 7px;touch-action:none;cursor:grab;line-height:1}
+.wbtn{all:unset;box-sizing:border-box;cursor:pointer;width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:var(--muted);font-size:13px}
+.wbtn:hover{background:var(--raise);color:var(--ink)}
+.wbtn:focus-visible{outline:2px solid var(--accent)}
+.wb{padding:0 12px 12px;display:grid;gap:10px;min-width:0}
+.wb .btn{justify-self:start}
+.wb .m,.mcard .m{font-size:12px;color:var(--muted)}
+.wb .li{padding:8px 0;gap:8px}
+.wrow{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:9px;min-width:0;flex:1;border-radius:8px}
+.wrow:hover .t{text-decoration:underline;text-underline-offset:3px}
+.wrow:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrow[aria-current="true"] .t{color:var(--accent)}
+.wtx{min-width:0;display:grid}
+.wtx .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wtx .m{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wtm{font-size:11px;color:var(--muted);width:44px;flex:none}
+.wsub{font-size:12px;color:var(--muted)}
+.wsub b{color:var(--ink)}
+.wbtns{display:flex;gap:6px;flex-wrap:wrap}
+.wscroll{max-height:236px;overflow-y:auto;margin-right:-6px;padding-right:6px}
+.wsearch{display:block}
+.wkpi{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.wkpi b{font-family:var(--f-display);font-size:26px;font-weight:750;letter-spacing:-.02em;line-height:1.1}
+.wkpi span{font-size:12px;color:var(--muted)}
+.wtrack{height:8px;border-radius:999px;background:var(--raise);overflow:hidden;box-shadow:inset 0 0 0 1px var(--line)}
+.wtrack i{display:block;height:100%;background:var(--ring);border-radius:999px}
+.wstats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.wstats>div{display:grid;gap:1px;min-width:0}
+.wstats b{font-size:13px;font-weight:600}
+.wstats .label{font-size:10px}
+.wform{display:flex;gap:6px;flex-wrap:wrap}
+.wform input{flex:1 1 110px;min-width:0;border:1px solid var(--line);background:var(--raise);border-radius:8px;padding:6px 9px}
+.wdrop{margin:0;padding:14px 12px;gap:2px}
+.wfrow{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:132px minmax(0,1fr) 24px;gap:10px;align-items:center;font-size:13px;border-radius:6px}
+.wfrow>span:first-child{display:flex;gap:8px;align-items:center;white-space:nowrap;overflow:hidden}
+.wfrow:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wfrow[aria-pressed="false"]{opacity:.45}
+.mcalh,.mcal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;text-align:center}
+.mcalh{font-size:10px;color:var(--muted);font-weight:600}
+.mcal button{all:unset;box-sizing:border-box;cursor:pointer;height:32px;border-radius:8px;font-size:12px;display:grid;justify-items:center;align-content:center;gap:2px;font-family:var(--f-mono)}
+.mcal button:hover{background:var(--raise)}
+.mcal button.today{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.mcal button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.mcal button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.mcal button>span{display:flex;gap:2px;height:4px}
+.mcal i{width:4px;height:4px;border-radius:50%;display:block}
+.mcal button[aria-pressed="true"] i{background:var(--surface);box-shadow:none}
+.wph{border:2px dashed var(--accent);border-radius:14px;background:color-mix(in srgb,var(--accent) 14%,transparent);min-height:44px;flex:none}
+body.wdrag{cursor:grabbing;user-select:none;-webkit-user-select:none}
+body.wdrag .wzone{min-height:70px;outline:1.5px dashed color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:-3px;border-radius:16px}
+.bnav{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media (max-width:1099px){.mbar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.mbar::-webkit-scrollbar{display:none}.mplace{flex-wrap:wrap;width:auto}}
+@media (max-width:400px){.bnav button{font-size:9.5px}.bnav .ic{width:40px}}
+@media (min-width:1100px){
+  body.mapmode{overflow:hidden}
+  #mapview{position:fixed;left:0;right:0;bottom:0;top:var(--hh,118px);padding:0;z-index:1}
+  .mapstage{position:absolute;inset:0;height:auto}
+  .wzone{position:absolute;top:10px;bottom:10px;width:326px;padding:0 2px 2px;overflow-y:auto;scrollbar-width:none;pointer-events:none;z-index:4}
+  .wzone::-webkit-scrollbar{display:none}
+  .wzone>*{pointer-events:auto;flex:none}
+  .wzone[data-zone="left"]{left:10px}
+  .wzone[data-zone="right"]{right:10px}
+  .mhud{left:348px;right:348px}
+  .mcard{position:absolute;z-index:5;margin:0;left:50%;transform:translateX(-50%);width:min(430px,calc(100% - 716px));bottom:22px;max-height:calc(100% - 120px);overflow-y:auto}
+  body.wdrag .wzone{pointer-events:auto;background:rgba(12,14,18,.35)}
+}
 </style>
 </head>
 <body>
@@ -568,7 +706,8 @@ body.dragging .zone{box-shadow:inset 0 0 0 1.5px var(--line)}
       <button class="btn ghost sm" id="logout" hidden title="Cerrar sesión">Salir</button>
     </div>
     <nav class="seg" role="tablist" id="tabs">
-      <button role="tab" data-tab="resumen" aria-selected="true">Resumen</button>
+      <button role="tab" data-tab="mapa" aria-selected="true">Mapa</button>
+      <button role="tab" data-tab="resumen" aria-selected="false">Resumen</button>
       <button role="tab" data-tab="pipeline" aria-selected="false">Pipeline</button>
       <button role="tab" data-tab="clientes" aria-selected="false">Clientes</button>
       <button role="tab" data-tab="calendario" aria-selected="false">Calendario</button>
@@ -582,7 +721,20 @@ body.dragging .zone{box-shadow:inset 0 0 0 1.5px var(--line)}
   <div class="banner">Conectando con la base de datos compartida…</div>
 </main>
 
+<section id="mapview" hidden aria-label="Mapa de negocios y widgets">
+  <div class="mapstage" id="mapstage">
+    <div id="map"></div>
+    <div class="mmsg" id="mmsg" hidden></div>
+    <div class="mhud" id="mhud"></div>
+    <div class="mattr">© <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></div>
+  </div>
+  <div class="mcard" id="mcard" hidden></div>
+  <div class="wzone" data-zone="left" id="wz-left"></div>
+  <div class="wzone" data-zone="right" id="wz-right"></div>
+</section>
+
 <nav class="bnav" id="bnav" aria-label="Secciones">
+  <button data-tab="mapa"><span class="ic"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17.5s5.5-4.9 5.5-9.2A5.5 5.5 0 0 0 4.5 8.3c0 4.3 5.5 9.2 5.5 9.2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10" cy="8.2" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></span>Mapa</button>
   <button data-tab="resumen"><span class="ic"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-width="1.7" opacity=".4"/><path d="M10 3.5A6.5 6.5 0 0 1 16.5 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>Resumen</button>
   <button data-tab="pipeline"><span class="ic"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="4" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="8" y="3.5" width="4" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="13.5" y="3.5" width="4" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></span>Pipeline</button>
   <button data-tab="clientes"><span class="ic"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 7.5h7M6.5 10.5h7M6.5 13.5h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>Clientes</button>
@@ -607,6 +759,7 @@ body.dragging .zone{box-shadow:inset 0 0 0 1.5px var(--line)}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="config.js"></script>
 <script>
 const STAGES=[
@@ -629,7 +782,7 @@ const hue=n=>{let h=0;for(const ch of String(n||''))h=(h*31+ch.charCodeAt(0))%36
 const av=(n,cls='')=>`<span class="av ${cls}" style="--h:${hue(n)}" aria-hidden="true">${esc(initials(n))}</span>`;
 const dot=k=>`<span class="dot" style="background:var(--s-${k})"></span>`;
 
-const S={db:null,user:null,me:null,canWrite:true,clients:[],payments:{},goals:{},month:ymOf(new Date()),tab:'resumen',
+const S={db:null,user:null,me:null,canWrite:true,clients:[],payments:{},goals:{},month:ymOf(new Date()),tab:'mapa',
   loaded:{clients:false,payments:false,events:false},events:[],users:{},selDay:null,clientId:null,stageFilter:'',contactForm:false,error:null,search:'',payForm:null,goalEdit:false,imp:null,menu:null};
 
 /* ---------- data helpers ---------- */
@@ -689,7 +842,7 @@ function startData(){
   unsubs.push(db.collection('clients').onSnapshot(s=>{S.clients=s.docs.map(d=>({id:d.id,...d.data()}));S.loaded.clients=true;render()},err('los clientes')));
   unsubs.push(db.collection('payments').onSnapshot(s=>{const o={};s.docs.forEach(d=>o[d.id]={id:d.id,...d.data()});S.payments=o;S.loaded.payments=true;render()},err('los cobros')));
   unsubs.push(db.collection('events').onSnapshot(s=>{S.events=s.docs.map(d=>({id:d.id,...d.data()}));S.loaded.events=true;render()},err('el calendario')));
-  unsubs.push(db.collection('users').onSnapshot(s=>{const o={};s.docs.forEach(d=>o[d.id]=d.data());S.users=o;hydrateNames()},()=>{}));
+  unsubs.push(db.collection('users').onSnapshot(s=>{const o={};s.docs.forEach(d=>o[d.id]=d.data());S.users=o;hydrateNames();mapLayoutSync()},()=>{}));
   unsubs.push(db.doc('settings/goals').onSnapshot(s=>{S.goals=(s.exists&&s.data().months)||{};render()},()=>{}));
 }
 function stopData(){unsubs.forEach(u=>{try{u()}catch(_){}});unsubs=[];S.loaded={clients:false,payments:false,events:false};S.clients=[];S.payments={};S.events=[];S.goals={};S.users={};S.db=null}
@@ -735,7 +888,7 @@ function render(){
   if(S.error) h+=`<div class="banner bad">${esc(S.error)}</div>`;
   else if(S.canWrite===false) h+=`<div class="banner">Estás viendo el panel en modo lectura. Para editar, el propietario debe darte acceso de colaborador o editor.</div>`;
   if(!S.error&&!(S.loaded.clients&&S.loaded.payments&&S.loaded.events)) h+=`<div class="banner">Cargando datos…</div>`;
-  else if(!S.error) h+=({resumen:vResumen,pipeline:vPipeline,clientes:vClientes,cliente:vCliente,calendario:vCalendario,cobros:vCobros,revolut:vRevolut}[S.tab])();
+  else if(!S.error&&S.tab!=='mapa') h+=({resumen:vResumen,pipeline:vPipeline,clientes:vClientes,cliente:vCliente,calendario:vCalendario,cobros:vCobros,revolut:vRevolut}[S.tab])();
   const keep={};main.querySelectorAll('input[id],textarea[id]').forEach(el=>{if(el.type!=='file'&&el.type!=='checkbox'&&el.id!=='search')keep[el.id]=el.value});
   const fid=document.activeElement&&main.contains(document.activeElement)?document.activeElement.id:null;
   const y=window.scrollY;main.innerHTML=h;
@@ -743,6 +896,7 @@ function render(){
   if(fid&&fid!=='search'){const el=document.getElementById(fid);if(el)el.focus({preventScroll:true})}
   window.scrollTo(0,y);
   hydrateNames();
+  renderMap();
 }
 function hydrateNames(){document.querySelectorAll('[data-uid]').forEach(e=>{const id=e.dataset.uid,u=S.users[id];e.textContent=id===S.me?'ti':(u&&u.name)||'otra persona'})}
 const emptyIcon=`<svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="5" y="9" width="24" height="18" rx="4" fill="none" stroke="var(--line)" stroke-width="2"/><rect x="9" y="5" width="16" height="4" rx="2" fill="var(--line)"/><path d="M11 18h12" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" opacity=".5"/></svg>`;
@@ -1211,7 +1365,7 @@ document.getElementById('addClient').onclick=()=>openDrawer(null);
 document.getElementById('tabs').onclick=e=>{const b=e.target.closest('[data-tab]');if(!b)return;S.tab=b.dataset.tab;try{localStorage.setItem('tab',S.tab)}catch(_){};render()};
 document.getElementById('bnav').onclick=e=>{const b=e.target.closest('[data-tab]');if(!b)return;S.tab=b.dataset.tab;try{localStorage.setItem('tab',S.tab)}catch(_){};render();window.scrollTo(0,0)};
 document.getElementById('fab').onclick=()=>{if(S.tab==='calendario')return openEvent(null,S.selDay||todayISO());if(S.tab==='cliente'&&S.clientId)return openEvent(null,todayISO(),S.clientId);openDrawer(null)};
-try{const t=localStorage.getItem('tab');if(t&&['resumen','pipeline','clientes','calendario','cobros','revolut'].includes(t))S.tab=t}catch(_){}
+// Al entrar se abre siempre el mapa.
 
 document.addEventListener('click',async e=>{
   const el=e.target.closest('[data-act]');
@@ -1356,6 +1510,302 @@ async function setPlan(c,plan){
   }
   document.addEventListener('pointerup',()=>end(true));
   document.addEventListener('pointercancel',()=>end(false));
+})();
+/* ---------- mapa + widgets ---------- */
+const MAP_STYLE='https://tiles.openfreemap.org/styles/dark';
+const M={map:null,failed:false,marks:{},sel:null,hide:new Set(['perdido']),placing:null,geoBusy:null,geoTried:new Set(),fitted:false,wMenu:false};
+const WD={on:false};
+const WIDGETS={objetivo:'Objetivo del mes',cobros:'Pendientes de cobro',revolut:'Revolut',negocios:'Negocios',agenda:'Agenda · 7 días',calendario:'Calendario',embudo:'Embudo'};
+const WDEF={left:['objetivo','cobros','revolut'],right:['negocios','agenda','calendario','embudo'],off:[],col:{}};
+let L=null;
+function normL(x){
+  x=x||{};const seen=new Set(),pick=a=>(Array.isArray(a)?a:[]).filter(k=>WIDGETS[k]&&!seen.has(k)&&seen.add(k));
+  const o={left:pick(x.left),right:pick(x.right),off:pick(x.off),col:{}};
+  Object.keys(WIDGETS).forEach(k=>{if(!seen.has(k))(WDEF.left.includes(k)?o.left:o.right).push(k);if(x.col&&x.col[k])o.col[k]=true});
+  return o;
+}
+function loadL(){try{L=normL(JSON.parse(localStorage.getItem('nk_layout')||'null')||WDEF)}catch(_){L=normL(WDEF)}}
+function saveL(){
+  try{localStorage.setItem('nk_layout',JSON.stringify(L))}catch(_){}
+  if(S.db&&S.me)S.db.doc('users/'+S.me).set({layout:L},{merge:true}).catch(()=>{});
+}
+// La distribución de widgets se guarda por usuario (users/<uid>.layout) y se recupera en cualquier dispositivo.
+function mapLayoutSync(){
+  const r=S.me&&S.users[S.me]&&S.users[S.me].layout;if(!r||WD.on)return;
+  const n=normL(r);if(!L||JSON.stringify(n)!==JSON.stringify(L)){L=n;try{localStorage.setItem('nk_layout',JSON.stringify(L))}catch(_){};if(S.tab==='mapa')renderMap()}
+}
+const hasLL=c=>typeof c.lat==='number'&&typeof c.lng==='number';
+const isDesk=()=>innerWidth>=1100;
+const wEmpty=t=>`<div class="empty">${emptyIcon}${t}</div>`;
+const geoKey=c=>c.id+'|'+c.address;
+const geoPending=()=>S.clients.filter(c=>c.address&&c.address.trim()&&(!hasLL(c)||c.geoAddr!==c.address)&&!M.geoTried.has(geoKey(c)));
+
+/* contenido de cada widget */
+const WB={
+  objetivo(){
+    const m=S.month,goal=+S.goals[m]||0,col=collected(m),B=pendingBreakdown(m),pc=goal?Math.min(100,col/goal*100):0;
+    let h=`<div class="wkpi"><b class="num">${fmtEur(col)}</b><span>cobrado en ${esc(mLabel(m).toLowerCase())}</span></div>
+    <div class="wtrack" role="img" aria-label="${goal?Math.round(col/goal*100)+' % del objetivo':'Sin objetivo'}"><i style="width:${pc}%"></i></div>
+    <div class="wsub">${goal?`Objetivo <b>${fmtEur(goal)}</b> · faltan <b>${fmtEur(Math.max(0,goal-col))}</b>`:'Aún no hay objetivo para este mes'}</div>
+    <div class="wstats"><div><span class="label">Por cobrar</span><b class="num">${fmtEur(B.total)}</b></div><div><span class="label">Cuotas / mes</span><b class="num">${fmtEur(expected(m))}</b></div><div><span class="label">Activos</span><b class="num">${activeFor(m).length}</b></div></div>`;
+    h+=S.goalEdit?`<form id="goalForm" class="wform"><input id="goalInput" type="number" min="0" step="50" value="${goal||''}" placeholder="Objetivo en €" aria-label="Objetivo de ${esc(mLabel(m))} en euros" required><button class="btn primary sm" type="submit">Guardar</button><button class="btn ghost sm" type="button" data-act="goalCancel">Cancelar</button></form>`
+      :`<button class="btn sm" data-act="goalEdit" ${ro()}>${goal?'Cambiar objetivo':'Fijar objetivo del mes'}</button>`;
+    return h;
+  },
+  cobros(){
+    const m=S.month,rows=dueRows(m),pend=rows.filter(c=>!payFor(c.id,m));
+    const li=pend.slice(0,6).map(c=>{const st=payStatus(c,m);return `<div class="li"><button class="wrow" data-act="mSel" data-id="${c.id}">${av(c.name,'sm')}<span class="wtx"><span class="t">${esc(c.name)}</span><span class="m"><span class="num">${fmtEur(c.fee)}</span>${c.dueDay?' · día '+esc(c.dueDay):''} · ${st.l}</span></span></button><button class="btn ok sm" data-act="quickPay" data-id="${c.id}" aria-label="Marcar recibido el cobro de ${esc(c.name)}" ${ro()}>✓ Recibido</button></div>`}).join('');
+    return (pend.length?`<div class="list">${li}</div>${pend.length>6?`<div class="wsub">y ${pend.length-6} más en Cobros</div>`:''}`:wEmpty(rows.length?'Todo cobrado este mes.':'No hay cuotas que cobrar este mes.'))
+      +`<button class="btn sm" data-act="goCobros">Abrir cobros</button>`;
+  },
+  revolut(){
+    const I=S.imp;
+    let h=`<label class="drop wdrop" id="drop"><input type="file" id="csv" accept=".csv,text/csv"><span style="font-weight:600">Subir extracto CSV de Revolut</span><span class="m">arrástralo aquí o toca para elegirlo</span></label>`;
+    if(I&&I.error)h+=`<div class="wsub">${esc(I.error)}</div>`;
+    else if(I){const n=I.items.length,k=I.items.filter(x=>x.clientId&&!x.already).length;
+      h+=`<div class="wsub"><b>${esc(I.name)}</b> · ${n} ingreso${n===1?'':'s'}, ${k} por marcar</div><div class="wbtns"><button class="btn primary sm" data-act="goRevolut">Revisar y marcar</button><button class="btn ghost sm" data-act="impClear">Descartar</button></div>`}
+    return h;
+  },
+  negocios(){
+    const q=norm(S.search);
+    const list=S.clients.filter(c=>!q||norm([c.name,c.company,c.sector,c.address,c.contact].join(' ')).includes(q)).sort((a,b)=>a.name.localeCompare(b.name));
+    const rows=list.map(c=>`<div class="li"><button class="wrow" data-act="mSel" data-id="${c.id}" aria-current="${M.sel===c.id}">${dot(c.stage)}<span class="wtx"><span class="t">${esc(c.name)}</span><span class="m">${esc(stageLabel(c.stage)+(c.sector?' · '+c.sector:''))}</span></span></button>${hasLL(c)?'':`<button class="btn sm" data-act="mPlace" data-id="${c.id}" ${ro()}>Ubicar</button>`}</div>`).join('');
+    const no=S.clients.filter(c=>!hasLL(c)).length;
+    return `<label class="search wsearch">${SEARCH_ICON}<input type="search" id="search" placeholder="Buscar negocio" value="${esc(S.search)}" aria-label="Buscar negocio"></label>
+    <div class="wsub">${S.clients.length} negocio${S.clients.length===1?'':'s'}${no?` · <b>${no} sin ubicar</b>`:''}</div>
+    <div class="list wscroll">${rows||wEmpty(S.clients.length?'Ningún negocio coincide.':'Aún no hay negocios. Añade el primero con «+ Cliente».')}</div>`;
+  },
+  agenda(){
+    const t=todayISO(),lim=addDays(t,7),ag=[];
+    S.clients.forEach(c=>{if(c.nextDate&&c.nextDate<=lim&&c.stage!=='perdido')ag.push({k:'act',id:c.id,date:c.nextDate,time:'',name:c.name,t:(c.nextAction||'Seguimiento')+' · '+stageLabel(c.stage)})});
+    S.events.forEach(e=>{if(e.date&&e.date>=t&&e.date<=lim)ag.push({k:'ev',id:e.id,date:e.date,time:e.time||'',name:e.title,t:[e.type,clientById(e.clientId)?.name,e.place].filter(Boolean).join(' · ')})});
+    ag.sort((a,b)=>a.date.localeCompare(b.date)||(a.time||'99').localeCompare(b.time||'99'));
+    const rows=ag.map(x=>`<div class="li"><button class="wrow" data-act="${x.k==='ev'?'evEdit':'mSel'}" data-id="${x.id}">${x.k==='ev'?`<span class="av sm" aria-hidden="true" style="background:var(--ink);color:var(--surface);box-shadow:none">${CAL_ICON}</span>`:av(x.name,'sm')}<span class="wtx"><span class="t">${esc(x.name)}</span><span class="m">${esc(x.t)}</span></span></button><span class="chip ${x.date<t?'late':''}">${x.date<t?'Vencida · ':''}${fmtDate(x.date).slice(0,5)}${x.time?' · '+esc(x.time):''}</span></div>`).join('');
+    return (ag.length?`<div class="list">${rows}</div>`:wEmpty('Nada programado para los próximos 7 días.'))+`<button class="btn sm" data-act="evNew" ${ro()}>+ Reunión</button>`;
+  },
+  calendario(){
+    const m=S.month,[y,mo]=m.split('-').map(Number),t=todayISO(),off=(new Date(y,mo-1,1).getDay()+6)%7,dim=new Date(y,mo,0).getDate();
+    if(!S.selDay||S.selDay.slice(0,7)!==m)S.selDay=t.slice(0,7)===m?t:m+'-01';
+    const items=dayItems(m);let cells='';
+    for(let i=0;i<off;i++)cells+='<span aria-hidden="true"></span>';
+    for(let d=1;d<=dim;d++){const ds=m+'-'+pad(d),li=items[ds]||[];
+      cells+=`<button class="${ds===t?'today':''}" data-act="day" data-d="${ds}" aria-pressed="${ds===S.selDay}" aria-label="${d}, ${li.length} apuntado${li.length===1?'':'s'}">${d}<span>${li.slice(0,3).map(x=>`<i class="${x.k}"></i>`).join('')}</span></button>`}
+    const sel=items[S.selDay]||[],lbl={ev:'Día',act:'Acción',due:'Cobro'};
+    const rows=sel.map(x=>`<div class="li"><button class="wrow" data-act="${x.k==='ev'?'evEdit':'mSel'}" data-id="${x.id}"><span class="wtm num">${x.time?esc(x.time):lbl[x.k]}</span><span class="wtx"><span class="t">${esc(x.title)}</span>${x.sub?`<span class="m">${esc(x.sub)}</span>`:''}</span></button></div>`).join('');
+    return `<div class="wsub"><b>${esc(mLabel(m))}</b></div><div class="mcalh" aria-hidden="true">${['L','M','X','J','V','S','D'].map(d=>`<span>${d}</span>`).join('')}</div><div class="mcal">${cells}</div>
+    <div class="wsub"><b>${fmtDate(S.selDay)}</b> · ${sel.length} apuntado${sel.length===1?'':'s'}</div>${sel.length?`<div class="list">${rows}</div>`:''}
+    <div class="wbtns"><button class="btn sm" data-act="evNew" data-d="${S.selDay}" ${ro()}>+ Evento</button><button class="btn ghost sm" data-act="goTab" data-tab="calendario">Abrir calendario</button></div>`;
+  },
+  embudo(){
+    const cnt=k=>S.clients.filter(c=>c.stage===k).length,mx=Math.max(1,...STAGES.map(s=>cnt(s.k)));
+    return `<div class="funnel">${STAGES.map(s=>`<button class="wfrow" data-act="mFilter" data-s="${s.k}" aria-pressed="${!M.hide.has(s.k)}" title="Mostrar u ocultar esta etapa en el mapa"><span>${dot(s.k)}${s.l}</span><span class="track" style="height:8px;background:var(--raise);border-radius:999px;overflow:hidden"><i style="display:block;height:100%;border-radius:999px;width:${cnt(s.k)/mx*100}%;background:var(--s-${s.k})"></i></span><span class="num" style="text-align:right">${cnt(s.k)}</span></button>`).join('')}</div>
+    <div class="wsub">Toca una etapa para mostrarla u ocultarla en el mapa.</div><button class="btn sm" data-act="goTab" data-tab="pipeline">Abrir pipeline</button>`;
+  }
+};
+function wdgHTML(id){
+  const col=!!L.col[id],n=WIDGETS[id];
+  return `<section class="wdg" data-w="${id}" aria-label="${n}"><header class="wh"><span class="wgrip" aria-hidden="true" title="Arrastra para mover">⋮⋮</span><h2>${n}</h2><button class="wbtn" data-act="wCol" data-w="${id}" aria-expanded="${!col}" aria-label="${col?'Desplegar':'Plegar'} ${n}">${col?'+':'–'}</button><button class="wbtn" data-act="wOff" data-w="${id}" aria-label="Ocultar ${n}">✕</button></header>${col?'':`<div class="wb">${WB[id]()}</div>`}</section>`;
+}
+function hudHTML(){
+  const cnt=k=>S.clients.filter(c=>c.stage===k).length;
+  const chips=STAGES.filter(s=>cnt(s.k)).map(s=>`<button class="mchip" data-act="mFilter" data-s="${s.k}" aria-pressed="${!M.hide.has(s.k)}">${dot(s.k)}${s.l} <span class="num">${cnt(s.k)}</span></button>`).join('');
+  const pend=geoPending().length;
+  const menu=M.wMenu?`<div class="wmenu"><div class="smh">Widgets visibles</div>${Object.keys(WIDGETS).map(k=>{const on=!L.off.includes(k);return `<div class="wmrow"><button role="checkbox" aria-checked="${on}" data-act="wOff" data-w="${k}"><span class="wck" aria-hidden="true">${on?'✓':''}</span>${WIDGETS[k]}</button>${on?`<button data-act="wSwap" data-w="${k}" aria-label="Pasar ${WIDGETS[k]} al otro lado" title="Pasar al otro lado">⇄</button>`:''}</div>`}).join('')}<button class="wmreset" data-act="wReset">Restablecer distribución</button></div>`:'';
+  let tools='';
+  if(M.geoBusy)tools+=`<span class="mchip txt" role="status">Ubicando ${M.geoBusy.i} de ${M.geoBusy.n}…</span>`;
+  else if(pend)tools+=`<button class="mchip hot" data-act="mGeo" ${ro()}>Ubicar ${pend} por su dirección</button>`;
+  tools+=`<button class="mchip" data-act="mFit">Centrar</button><button class="mchip" data-act="mZoom" data-d="1" aria-label="Acercar">+</button><button class="mchip" data-act="mZoom" data-d="-1" aria-label="Alejar">−</button><span class="wmw"><button class="mchip" data-act="wMenu" aria-expanded="${M.wMenu}">Widgets</button>${menu}</span>`;
+  let h=`<div class="mbar" role="group" aria-label="Etapas visibles en el mapa">${chips||'<span class="mchip txt">Sin negocios todavía</span>'}</div><div class="mbar tools">${tools}</div>`;
+  const pc=M.placing&&clientById(M.placing);
+  if(pc)h+=`<div class="mbar mplace" role="status"><span>Toca el mapa donde está <b>${esc(pc.name)}</b></span><button class="mchip" data-act="mPlaceX">Cancelar</button></div>`;
+  else if(S.clients.length&&!S.clients.some(hasLL))h+=`<div class="mbar mplace"><span>Ningún negocio tiene ubicación todavía. ${pend?'Pulsa «Ubicar por su dirección»':'Añade la dirección en su ficha'} o colócalo a mano con «Ubicar» en el widget Negocios.</span></div>`;
+  return h;
+}
+function cardHTML(c){
+  const t=todayISO(),last=(c.log||[]).slice(-1)[0];
+  const web=c.web?`<a href="${esc(/^https?:\/\//i.test(c.web)?c.web:'https://'+c.web)}" target="_blank" rel="noopener">${esc(c.web.replace(/^https?:\/\//i,'').replace(/\/$/,''))} ↗</a>`:'';
+  const fee=planOf(c)==='membresia'&&+c.fee?fmtEur(c.fee)+'/mes':planOf(c)==='anual'&&+c.annualFee?fmtEur(c.annualFee)+'/año':planLabel(c);
+  const row=(k,v,raw)=>v?`<div><dt>${k}</dt><dd>${raw?v:esc(v)}</dd></div>`:'';
+  const rows=row('Web',web,1)+row('Dirección',c.address)+row('Contacto',c.contact)+row('Responsable',c.owner);
+  return `<div class="mch"><span class="who">${av(c.name)}<span style="min-width:0;display:grid"><span class="t">${esc(c.name)}</span><span class="m">${esc([c.sector,fee].filter(Boolean).join(' · '))}</span></span></span><button class="btn ghost sm" data-act="mClose" aria-label="Cerrar tarjeta">✕</button></div>
+  <div class="mcr"><label class="mstage"><span class="dot" style="background:var(--s-${c.stage})"></span><select data-act="stage" data-id="${c.id}" aria-label="Etapa de ${esc(c.name)}" ${ro()}>${STAGES.map(o=>`<option value="${o.k}" ${o.k===c.stage?'selected':''}>${o.l}</option>`).join('')}</select></label>${origBadge(c)}${c.nextDate?`<span class="chip ${c.nextDate<t?'late':''}">${esc(c.nextAction||'Seguimiento')} · ${fmtDate(c.nextDate)}</span>`:''}</div>
+  ${rows?`<dl class="mdl">${rows}</dl>`:`<div class="wsub">Sin web ni dirección todavía. Añádelas en «Editar».</div>`}
+  ${last?`<div class="mnotes"><span class="label">Última nota</span><p>${esc(last.text)}</p></div>`:c.notes?`<div class="mnotes"><span class="label">Notas</span><p>${esc(c.notes)}</p></div>`:''}
+  <form id="noteForm" class="mnote"><input name="note" id="n_text" placeholder="Anotar algo de este negocio" aria-label="Nueva nota" autocomplete="off" ${ro()}><button class="btn sm" type="submit" ${ro()}>Anotar</button></form>
+  <div class="wbtns"><button class="btn primary sm" data-act="edit" data-id="${c.id}">Abrir ficha</button><button class="btn sm" data-act="editClient" data-id="${c.id}">Editar</button><button class="btn sm" data-act="evNew" data-client="${c.id}" ${ro()}>+ Reunión</button><button class="btn ghost sm" data-act="mPlace" data-id="${c.id}" ${ro()}>${hasLL(c)?'Mover pin':'Ubicar en el mapa'}</button></div>`;
+}
+function setH(id,h){
+  const el=document.getElementById(id);if(el._h===h)return;
+  const keep={};el.querySelectorAll('input[id],textarea[id]').forEach(i=>{if(i.type!=='file'&&i.id!=='search')keep[i.id]=i.value});
+  const f=document.activeElement&&el.contains(document.activeElement)?document.activeElement.id:null;
+  el._h=h;el.innerHTML=h;
+  for(const k in keep){const i=document.getElementById(k);if(i&&el.contains(i))i.value=keep[k]}
+  if(f&&f!=='search'){const i=document.getElementById(f);if(i)i.focus({preventScroll:true})}
+}
+function mapMsg(t){const e=document.getElementById('mmsg');e.hidden=!t;e.textContent=t||''}
+function renderMap(){
+  const mv=document.getElementById('mapview'),main=document.getElementById('main');
+  const on=S.tab==='mapa'&&!S.error&&S.loaded.clients&&S.loaded.payments&&S.loaded.events;
+  mv.hidden=!on;main.hidden=on;document.body.classList.toggle('mapmode',on);
+  if(!on)return;
+  if(!L)loadL();
+  mapInit();
+  if(M.sel&&!clientById(M.sel))M.sel=null;
+  if(M.placing&&!clientById(M.placing))M.placing=null;
+  document.getElementById('mapstage').classList.toggle('placing',!!M.placing);
+  setH('mhud',hudHTML());
+  if(!WD.on)['left','right'].forEach(z=>setH('wz-'+z,L[z].map(wdgHTML).join('')));
+  const c=M.sel&&clientById(M.sel),mc=document.getElementById('mcard');
+  mc.hidden=!c;if(c)setH('mcard',cardHTML(c));else{mc._h=null;mc.innerHTML=''}
+  syncPins();hydrateNames();
+}
+
+/* mapa */
+function mapInit(){
+  if(M.map||M.failed)return;const st=document.getElementById('mapstage');
+  if(!window.maplibregl){M.failed=true;mapMsg('No se pudo cargar el mapa. Comprueba la conexión y recarga la página; los widgets siguen funcionando.');return}
+  try{M.map=new maplibregl.Map({container:'map',style:MAP_STYLE,center:[-3.7038,40.4168],zoom:11.5,attributionControl:false,dragRotate:false,pitchWithRotate:false,maxPitch:0})}
+  catch(e){M.failed=true;mapMsg('Este navegador no puede mostrar el mapa. Los widgets siguen funcionando.');return}
+  M.map.touchZoomRotate.disableRotation();
+  M.map.on('style.load',mapRestyle);
+  M.map.on('click',e=>{
+    if(e.originalEvent&&e.originalEvent.target&&e.originalEvent.target.closest&&e.originalEvent.target.closest('.pin'))return;
+    if(M.placing){const id=M.placing,c=clientById(id);M.placing=null;M.sel=id;S.clientId=id;
+      if(c)write(()=>S.db.doc('clients/'+id).update({lat:+e.lngLat.lat.toFixed(6),lng:+e.lngLat.lng.toFixed(6),geoAddr:c.address||'',updatedAt:new Date().toISOString()}),c.name+' colocado en el mapa');
+      return renderMap()}
+    if(M.sel){M.sel=null;renderMap()}
+  });
+  const z=()=>st.classList.toggle('zin',M.map.getZoom()>=13);M.map.on('zoom',z);z();
+  if(window.ResizeObserver)new ResizeObserver(()=>M.map&&M.map.resize()).observe(st);
+}
+// Recolorea el estilo base a la paleta del mapa: asfalto oscuro, agua petróleo y vías claras.
+function mapRestyle(){
+  const m=M.map,P=(id,k,v)=>{try{m.setPaintProperty(id,k,v)}catch(_){}};
+  ((m.getStyle()||{}).layers||[]).forEach(l=>{const id=l.id,sl=l['source-layer']||'';
+    if(l.type==='background')P(id,'background-color','#15181D');
+    else if(l.type==='fill'){
+      P(id,'fill-color',sl==='water'?'#0B2E40':sl==='building'?'#232830':sl==='park'||/wood|park|grass/.test(id)?'#18271D':sl==='aeroway'?'#262B33':/pier/.test(id)?'#15181D':'#1A1D23');
+      if(sl==='building')P(id,'fill-outline-color','#2D333C')}
+    else if(l.type==='line'){let c='#4A515C';
+      if(sl==='waterway')c='#0E3A52';else if(sl==='boundary')c='#69717D';else if(sl==='aeroway')c='#353B45';
+      else if(/rail/.test(id))c='#30353D';else if(/casing/.test(id))c='#0C0E12';
+      else if(/motorway/.test(id))c='#B9C0CA';else if(/major/.test(id))c='#7C8591';else if(/path|pier/.test(id))c='#353B44';
+      P(id,'line-color',c)}
+    else if(l.type==='symbol'){P(id,'text-color',sl==='water_name'?'#4E8AA8':/place_(city|town|state|country)/.test(id)?'#E4E8EE':'#8E97A3');P(id,'text-halo-color','#0C0E12');P(id,'text-halo-width',1.2)}
+  });
+}
+function syncPins(){
+  if(!M.map)return;const t=todayISO(),seen={};
+  S.clients.forEach(c=>{
+    if(!hasLL(c))return;seen[c.id]=1;let k=M.marks[c.id];
+    if(!k){const w=document.createElement('div');w.innerHTML='<button type="button" class="pin"><i></i><span></span></button>';
+      w.firstChild.addEventListener('click',e=>{e.stopPropagation();if(!M.placing)mapSelect(c.id,false)});
+      k=M.marks[c.id]={w,el:w.firstChild,ll:'',m:new maplibregl.Marker({element:w,anchor:'center'}).setLngLat([c.lng,c.lat]).addTo(M.map)}}
+    const ll=c.lng+','+c.lat;if(k.ll!==ll){k.m.setLngLat([c.lng,c.lat]);k.ll=ll}
+    k.el.style.setProperty('--c',`var(--s-${c.stage})`);
+    k.el.className='pin'+(M.sel===c.id?' sel':'')+(c.stage==='pausado'||c.stage==='perdido'?' hollow':'')+(c.nextDate&&c.nextDate<=t&&c.stage!=='perdido'?' due':'');
+    k.w.style.display=M.hide.has(c.stage)&&M.sel!==c.id?'none':'';
+    k.w.style.zIndex=M.sel===c.id?'2':'';
+    k.el.setAttribute('aria-label',c.name+' · '+stageLabel(c.stage));k.el.lastChild.textContent=c.name;
+  });
+  for(const id in M.marks)if(!seen[id]){M.marks[id].m.remove();delete M.marks[id]}
+  if(!M.fitted&&Object.keys(M.marks).length){M.fitted=true;mapFit(false)}
+}
+function mapFit(anim=true){
+  if(!M.map)return;const pts=S.clients.filter(c=>hasLL(c)&&!M.hide.has(c.stage));if(!pts.length)return;
+  if(pts.length===1)return M.map.easeTo({center:[pts[0].lng,pts[0].lat],zoom:14,duration:anim?600:0});
+  const b=new maplibregl.LngLatBounds();pts.forEach(c=>b.extend([c.lng,c.lat]));
+  const pad=isDesk()?{top:90,bottom:70,left:L.left.length?360:70,right:L.right.length?360:70}:{top:70,bottom:40,left:40,right:40};
+  M.map.fitBounds(b,{padding:pad,maxZoom:15,duration:anim?700:0});
+}
+function stageIntoView(){if(!isDesk())document.getElementById('mapstage').scrollIntoView({block:'start',behavior:'smooth'})}
+function mapSelect(id,fly=true){
+  const c=clientById(id);if(!c)return;
+  M.sel=id;S.clientId=id;M.placing=null;
+  const mc=document.getElementById('mcard');mc._h=null;mc.innerHTML='';
+  renderMap();
+  if(fly)stageIntoView();
+  if(M.map&&hasLL(c))M.map.easeTo({center:[c.lng,c.lat],zoom:fly?Math.max(M.map.getZoom(),14):M.map.getZoom(),offset:[0,isDesk()?-90:0],duration:600});
+  else if(!hasLL(c))toast(c.name+' aún no tiene ubicación en el mapa');
+}
+// Convierte la dirección de cada ficha en coordenadas (Nominatim, OpenStreetMap). Una petición por segundo.
+async function geoRun(){
+  if(M.geoBusy||S.canWrite===false)return;const list=geoPending();if(!list.length)return;
+  M.geoBusy={i:0,n:list.length};const fail=[];let ok=0;
+  for(const c of list){
+    M.geoBusy.i++;M.geoTried.add(geoKey(c));renderMap();
+    try{
+      const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=es&q='+encodeURIComponent(c.address));
+      const j=r.ok?await r.json():[];
+      if(j&&j[0]&&isFinite(+j[0].lat)&&isFinite(+j[0].lon)){if(await write(()=>S.db.doc('clients/'+c.id).update({lat:+(+j[0].lat).toFixed(6),lng:+(+j[0].lon).toFixed(6),geoAddr:c.address})))ok++;else fail.push(c.name)}
+      else fail.push(c.name);
+    }catch(_){fail.push(c.name)}
+    if(M.geoBusy.i<list.length)await new Promise(r=>setTimeout(r,1100));
+  }
+  M.geoBusy=null;renderMap();mapFit();
+  toast(fail.length?`${ok} ubicado${ok===1?'':'s'}. Sin encontrar: ${fail.slice(0,3).join(', ')}${fail.length>3?'…':''}. Colócalos con «Ubicar».`:`${ok} negocio${ok===1?'':'s'} ubicado${ok===1?'':'s'} en el mapa`);
+}
+
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]');
+  if(M.wMenu&&!e.target.closest('.wmw')){M.wMenu=false;renderMap()}
+  if(!el)return;const a=el.dataset.act,id=el.dataset.id,w=el.dataset.w;
+  if(a==='mSel')return mapSelect(id);
+  if(a==='mClose'){M.sel=null;return renderMap()}
+  if(a==='mFilter'){const s=el.dataset.s;M.hide.has(s)?M.hide.delete(s):M.hide.add(s);return renderMap()}
+  if(a==='mFit')return mapFit();
+  if(a==='mZoom'){if(M.map)M.map.easeTo({zoom:M.map.getZoom()+(+el.dataset.d),duration:250});return}
+  if(a==='mGeo')return geoRun();
+  if(a==='mPlace'){if(!M.map){toast('El mapa no está disponible ahora mismo');return}M.placing=id;M.sel=null;renderMap();return stageIntoView()}
+  if(a==='mPlaceX'){M.placing=null;return renderMap()}
+  if(a==='wMenu'){M.wMenu=!M.wMenu;return renderMap()}
+  if(a==='wCol'){if(L.col[w])delete L.col[w];else L.col[w]=true;saveL();return renderMap()}
+  if(a==='wOff'){if(L.off.includes(w)){L.off=L.off.filter(k=>k!==w);(WDEF.left.includes(w)?L.left:L.right).push(w)}else{L.left=L.left.filter(k=>k!==w);L.right=L.right.filter(k=>k!==w);L.off.push(w)}saveL();return renderMap()}
+  if(a==='wSwap'){const from=L.left.includes(w)?'left':'right',to=from==='left'?'right':'left';L[from]=L[from].filter(k=>k!==w);L[to].push(w);saveL();return renderMap()}
+  if(a==='wReset'){L=normL(WDEF);saveL();return renderMap()}
+  if(a==='goTab'){S.tab=el.dataset.tab;render();return window.scrollTo(0,0)}
+});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape'||S.tab!=='mapa'||document.getElementById('modalRoot').innerHTML)return;
+  if(M.placing){M.placing=null;renderMap()}else if(M.wMenu){M.wMenu=false;renderMap()}else if(M.sel&&!/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)){M.sel=null;renderMap()}
+});
+/* arrastrar widgets entre la zona izquierda y la derecha */
+(function(){
+  let D=null;const ph=document.createElement('div');ph.className='wph';
+  function place(x,y){
+    const zs=[...document.querySelectorAll('.wzone')];let z;
+    if(isDesk())z=x<innerWidth/2?zs[0]:zs[1];else z=y>=zs[1].getBoundingClientRect().top?zs[1]:zs[0];
+    const ws=[...z.querySelectorAll('.wdg')].filter(n=>n!==D.el);let i=0;
+    for(const n of ws){const r=n.getBoundingClientRect();if(y>r.top+r.height/2)i++}
+    if(D.z===z&&D.i===i)return;D.z=z;D.i=i;z.insertBefore(ph,ws[i]||null);
+  }
+  document.addEventListener('pointerdown',e=>{
+    const h=e.target.closest&&e.target.closest('.wh');if(!h||e.button>0||e.target.closest('button'))return;
+    if(e.pointerType!=='mouse'&&!e.target.closest('.wgrip'))return;
+    const el=h.closest('.wdg');D={el,id:el.dataset.w,x:e.clientX,y:e.clientY,on:false,g:null,z:null,i:-1};
+    try{h.setPointerCapture(e.pointerId)}catch(_){}
+  });
+  document.addEventListener('pointermove',e=>{
+    if(!D)return;
+    if(!D.on){if(Math.hypot(e.clientX-D.x,e.clientY-D.y)<6)return;
+      D.on=WD.on=true;const g=document.createElement('div');g.className='dghost';g.textContent=WIDGETS[D.id];document.body.appendChild(g);D.g=g;
+      ph.style.height=Math.min(D.el.offsetHeight,96)+'px';D.el.classList.add('wsrc');document.body.classList.add('wdrag')}
+    e.preventDefault();D.g.style.transform=`translate(${e.clientX+12}px,${e.clientY+12}px)`;place(e.clientX,e.clientY);
+  },{passive:false});
+  function end(ok){
+    if(!D)return;const d=D;D=null;if(!d.on)return;
+    WD.on=false;d.g.remove();d.el.classList.remove('wsrc');document.body.classList.remove('wdrag');
+    if(ok&&ph.parentNode){const z=ph.parentNode.dataset.zone,o=z==='left'?'right':'left';
+      L[z]=[...ph.parentNode.children].filter(n=>n!==d.el).map(n=>n===ph?d.id:n.dataset.w).filter(Boolean);
+      L[o]=L[o].filter(k=>k!==d.id);saveL()}
+    ph.remove();document.querySelectorAll('.wzone').forEach(z=>z._h=null);renderMap();
+  }
+  document.addEventListener('pointerup',()=>end(true));
+  document.addEventListener('pointercancel',()=>end(false));
+})();
+(function(){
+  const hd=document.querySelector('header'),set=()=>document.documentElement.style.setProperty('--hh',Math.round(hd.getBoundingClientRect().height)+'px');
+  set();if(window.ResizeObserver)new ResizeObserver(set).observe(hd);addEventListener('resize',set);
 })();
 render();
 bootFirebase();
