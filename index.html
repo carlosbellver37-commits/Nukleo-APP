@@ -549,22 +549,21 @@ body.dragging .zone{box-shadow:inset 0 0 0 1.5px var(--line)}
 .smenu button:hover{background:var(--raise)}
 .smenu button.cur{font-weight:700}
 .smenu em{margin-left:auto;font-style:normal;font-size:10.5px;color:var(--muted)}
-/* ===== Mapa + widgets (solo esta pantalla es oscura) ===== */
-#mapview{--hud:rgba(12,14,18,.84);--hud-line:rgba(255,255,255,.14);--hud-ink:#ECEFF3;--hud-muted:#98A1AD;padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
-.mapstage{position:relative;height:min(54vh,520px);background:#15181D;overflow:hidden;
-  --s-lead:#AEB6C0;--s-contactado:#5DB0FF;--s-reunion:#B79CFF;--s-propuesta:#FFC043;--s-construccion:#FF9A4A;--s-activo:#3DDC84;--s-pausado:#7F8792;--s-perdido:#FF6368}
+/* ===== Mapa + widgets ===== */
+#mapview{--hud:rgba(255,255,255,.94);--hud-line:rgba(0,0,0,.12);--hud-ink:#15181D;--hud-muted:#7A828D;padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+.mapstage{position:relative;height:min(54vh,520px);background:#E6E2D8;overflow:hidden;--s-lead:#8B93A0}
 #map{position:absolute;inset:0}
 .mapstage.placing #map,.mapstage.placing .maplibregl-canvas{cursor:crosshair}
-.mmsg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:#98A1AD;font-size:13px;z-index:1}
-.mattr{position:absolute;z-index:2;left:50%;transform:translateX(-50%);bottom:4px;font-size:10px;color:#7A838F;white-space:nowrap;pointer-events:auto}
+.mmsg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:#5E6570;font-size:13px;z-index:1}
+.mattr{position:absolute;z-index:2;left:50%;transform:translateX(-50%);bottom:4px;font-size:10px;color:#5E6570;white-space:nowrap;pointer-events:auto}
 .mattr a{color:inherit}
 .mhud{position:absolute;z-index:3;top:10px;left:10px;right:10px;display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;pointer-events:none}
 .mhud>*{pointer-events:auto}
-.mbar{display:flex;gap:2px;flex-wrap:wrap;align-items:center;background:var(--hud);border:1px solid var(--hud-line);border-radius:12px;padding:4px;color:var(--hud-ink);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);max-width:100%}
-.mbar.tools{margin-left:auto}
+.hudbar{display:flex;gap:2px;flex-wrap:wrap;align-items:center;background:var(--hud);border:1px solid var(--hud-line);border-radius:12px;padding:4px;color:var(--hud-ink);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);max-width:100%}
+.hudbar.tools{margin-left:auto}
 .mchip{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:5px 9px;min-height:28px;border-radius:8px;font-size:11.5px;font-weight:600;letter-spacing:.02em;color:var(--hud-ink);white-space:nowrap}
-.mchip:hover{background:rgba(255,255,255,.1)}
-.mchip:focus-visible{outline:2px solid #fff;outline-offset:1px}
+.mchip:hover{background:rgba(0,0,0,.06)}
+.mchip:focus-visible{outline:2px solid #15181D;outline-offset:1px}
 .mchip[aria-pressed="false"]{color:var(--hud-muted)}
 .mchip[aria-pressed="false"] .dot{background:transparent!important;box-shadow:inset 0 0 0 1.5px var(--hud-muted)}
 .mchip .num{opacity:.7;font-size:11px}
@@ -572,8 +571,11 @@ body.dragging .zone{box-shadow:inset 0 0 0 1.5px var(--line)}
 .mchip.hot:hover{background:#FFD070}
 .mchip:disabled{opacity:.5;cursor:not-allowed}
 .mchip.txt{cursor:default}.mchip.txt:hover{background:none}
-.mplace{flex-basis:100%;width:max-content;padding:6px 10px;font-size:12.5px;gap:10px}
-.mplace .mchip{background:rgba(255,255,255,.12)}
+.mplace{flex-basis:100%;padding:6px 10px;font-size:12.5px;gap:8px;margin:0}
+.mplace .mchip{background:rgba(0,0,0,.07)}
+.mplace .mchip.hot{background:#15181D;color:#fff}
+.mplace input{flex:1 1 200px;min-width:0;border:1px solid var(--hud-line);background:#fff;color:#15181D;border-radius:8px;padding:6px 9px;font-size:13px}
+.hudbar{box-shadow:0 6px 18px -10px rgba(0,0,0,.35)}
 .wmw{position:relative;display:inline-flex}
 .wmenu{position:absolute;z-index:6;top:calc(100% + 8px);right:0;min-width:240px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 40px -12px rgba(0,0,0,.6);padding:6px;display:grid;gap:1px}
 .wmrow{display:flex;gap:2px}
@@ -587,18 +589,18 @@ body.dragging .zone{box-shadow:inset 0 0 0 1.5px var(--line)}
 
 /* pines */
 .pin{all:unset;cursor:pointer;display:block;position:relative}
-.pin i{display:block;width:16px;height:16px;border-radius:50%;background:var(--c);border:3px solid #0B0D10;box-shadow:0 0 0 1.5px rgba(255,255,255,.8),0 3px 8px rgba(0,0,0,.6);transition:width .15s,height .15s}
-.pin.hollow i{background:#15181D;border-color:var(--c);box-shadow:0 0 0 1.5px #0B0D10,0 3px 8px rgba(0,0,0,.6)}
-.pin span{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;font:600 11px/1.2 var(--f-body);color:#fff;text-shadow:0 0 3px #000,0 0 3px #000,0 1px 2px #000;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;opacity:0;transition:opacity .15s}
+.pin i{display:block;width:16px;height:16px;border-radius:50%;background:var(--c);border:3px solid #15181D;box-shadow:0 0 0 1.5px #fff,0 3px 8px rgba(0,0,0,.35);transition:width .15s,height .15s}
+.pin.hollow i{background:#fff;border-color:var(--c);box-shadow:0 0 0 1.5px #15181D,0 3px 8px rgba(0,0,0,.35)}
+.pin span{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;font:600 11px/1.2 var(--f-body);color:#15181D;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;opacity:0;transition:opacity .15s}
 .mapstage.zin .pin span,.pin:hover span,.pin.sel span,.pin:focus-visible span{opacity:1}
-.pin.sel i{width:22px;height:22px;box-shadow:0 0 0 3px #fff,0 0 0 7px color-mix(in srgb,var(--c) 40%,transparent),0 4px 12px rgba(0,0,0,.7)}
-.pin:focus-visible i{box-shadow:0 0 0 3px #fff}
+.pin.sel i{width:22px;height:22px;box-shadow:0 0 0 3px #fff,0 0 0 7px color-mix(in srgb,var(--c) 45%,transparent),0 4px 12px rgba(0,0,0,.4)}
+.pin:focus-visible i{box-shadow:0 0 0 3px #2B50F5}
 .pin.due::before{content:"";position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;border:2px solid var(--c);animation:pinp 1.8s ease-out infinite;pointer-events:none}
 @keyframes pinp{from{transform:scale(.9);opacity:.9}to{transform:scale(2.4);opacity:0}}
 @media (prefers-reduced-motion:reduce){.pin.due::before{animation:none;transform:scale(1.5);opacity:.6}.pin i{transition:none}}
 
 /* tarjeta del negocio */
-.mcard{margin:10px 16px 0;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 18px 50px -12px rgba(0,0,0,.75);display:grid;gap:10px;font-size:13px}
+.mcard{margin:10px 16px 0;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 18px 50px -14px rgba(0,0,0,.4);display:grid;gap:10px;font-size:13px}
 .mch{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .mch .t{font-family:var(--f-display);font-weight:650;font-size:16px;letter-spacing:-.01em;white-space:normal;overflow-wrap:anywhere}
 .mcr{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
@@ -616,7 +618,7 @@ body.dragging .zone{box-shadow:inset 0 0 0 1.5px var(--line)}
 
 /* widgets */
 .wzone{display:flex;flex-direction:column;gap:10px;padding:10px 16px 0}
-.wdg{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px -14px rgba(0,0,0,.55);min-width:0}
+.wdg{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px -16px rgba(0,0,0,.35);min-width:0}
 .wdg.wsrc{display:none}
 .wh{display:flex;align-items:center;gap:6px;padding:9px 8px 9px 6px;cursor:grab;user-select:none;-webkit-user-select:none}
 .wh h2{flex:1;min-width:0;margin:0;font-family:var(--f-display);font-weight:650;font-size:14px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -671,7 +673,7 @@ body.dragging .zone{box-shadow:inset 0 0 0 1.5px var(--line)}
 body.wdrag{cursor:grabbing;user-select:none;-webkit-user-select:none}
 body.wdrag .wzone{min-height:70px;outline:1.5px dashed color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:-3px;border-radius:16px}
 .bnav{grid-template-columns:repeat(6,minmax(0,1fr))}
-@media (max-width:1099px){.mbar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.mbar::-webkit-scrollbar{display:none}.mplace{flex-wrap:wrap;width:auto}}
+@media (max-width:1099px){.hudbar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.hudbar::-webkit-scrollbar{display:none}.mplace{flex-wrap:wrap;width:auto}}
 @media (max-width:400px){.bnav button{font-size:9.5px}.bnav .ic{width:40px}}
 @media (min-width:1100px){
   body.mapmode{overflow:hidden}
@@ -684,7 +686,7 @@ body.wdrag .wzone{min-height:70px;outline:1.5px dashed color-mix(in srgb,var(--a
   .wzone[data-zone="right"]{right:10px}
   .mhud{left:348px;right:348px}
   .mcard{position:absolute;z-index:5;margin:0;left:50%;transform:translateX(-50%);width:min(430px,calc(100% - 716px));bottom:22px;max-height:calc(100% - 120px);overflow-y:auto}
-  body.wdrag .wzone{pointer-events:auto;background:rgba(12,14,18,.35)}
+  body.wdrag .wzone{pointer-events:auto;background:rgba(255,255,255,.4)}
 }
 </style>
 </head>
@@ -918,6 +920,20 @@ function ring(col,goal,exp,pend){
   </svg><div class="c"><b>${goal?Math.round(col/goal*100)+'%':'—'}</b><span>${goal?'del objetivo':'sin objetivo'}</span></div></div>`;
 }
 
+// Previsto de un mes: lo ya cobrado más lo que falta (mes en curso) o las cuotas y renovaciones anuales que tocan (meses futuros).
+function forecast(m){
+  const cur=ymOf(new Date());
+  if(m<=cur){const col=collected(m),B=pendingBreakdown(m);return {m,col,pend:B.total,total:col+B.total,mem:B.mem,ann:B.ann,proj:B.proj,now:true}}
+  const mem=expected(m),ann=S.clients.filter(c=>planOf(c)==='anual'&&SOLD.includes(c.stage)&&(+c.annualFee||0)>0&&annualCycle(c).date.slice(0,7)===m).reduce((a,c)=>a+(+c.annualFee),0);
+  return {m,col:0,pend:mem+ann,total:mem+ann,mem,ann,proj:0,now:false};
+}
+function forecastPanel(m){
+  const fs=[0,1,2,3].map(i=>forecast(addM(m,i))),f0=fs[0];
+  const cell=f=>`<div><span class="label">${esc(mLabel(f.m))}</span><b class="num">${fmtEur(f.total)}</b><span class="m muted">${f.now?`cobrado ${fmtEur(f.col)} · falta ${fmtEur(f.pend)}`:[f.mem?'cuotas '+fmtEur(f.mem):'',f.ann?'anuales '+fmtEur(f.ann):''].filter(Boolean).join(' · ')||'nada previsto todavía'}</span>${f.now&&f.total?`<span class="mtrack" style="margin-top:6px"><i class="g" style="width:${f.col/f.total*100}%"></i><i class="y" style="width:${f.pend/f.total*100}%"></i></span>`:''}</div>`;
+  return `<section class="panel"><div class="ph"><h2>Previsión de cobros</h2><span class="sub">lo cobrado más lo que está previsto cobrar</span></div>
+  <div class="kstrip" style="margin-top:0">${fs.map(cell).join('')}</div>
+  <div class="wsub" style="margin-top:10px">Este mes: ${fmtEur(f0.col)} cobrado + ${fmtEur(f0.pend)} pendiente (membresías ${fmtEur(f0.mem)}, proyectos ${fmtEur(f0.proj)}, anuales ${fmtEur(f0.ann)}). Los meses siguientes cuentan las cuotas de clientes activos y las renovaciones anuales; los proyectos se suman cuando se venden.</div></section>`;
+}
 function vResumen(){
   const m=S.month,goal=+S.goals[m]||0,col=collected(m),exp=expected(m);
   const act=activeFor(m),rows=dueRows(m),pend=rows.filter(c=>!payFor(c.id,m));
@@ -941,6 +957,7 @@ function vResumen(){
     <div><div class="lab">Pipeline</div><div class="v">${openCount}</div><div class="s">oportunidades abiertas</div></div>
   </div></section>`;
   if(!S.clients.length) return g+emptyClients();
+  g+=forecastPanel(m);
 
   // chart
   const months=[...Array(6)].map((_,i)=>addM(m,i-5));
@@ -1512,7 +1529,7 @@ async function setPlan(c,plan){
   document.addEventListener('pointercancel',()=>end(false));
 })();
 /* ---------- mapa + widgets ---------- */
-const MAP_STYLE='https://tiles.openfreemap.org/styles/dark';
+const MAP_STYLE='https://tiles.openfreemap.org/styles/dark'; // se recolorea en mapRestyle()
 const M={map:null,failed:false,marks:{},sel:null,hide:new Set(['perdido']),placing:null,geoBusy:null,geoTried:new Set(),fitted:false,wMenu:false};
 const WD={on:false};
 const WIDGETS={objetivo:'Objetivo del mes',cobros:'Pendientes de cobro',revolut:'Revolut',negocios:'Negocios',agenda:'Agenda · 7 días',calendario:'Calendario',embudo:'Embudo'};
@@ -1538,7 +1555,7 @@ const hasLL=c=>typeof c.lat==='number'&&typeof c.lng==='number';
 const isDesk=()=>innerWidth>=1100;
 const wEmpty=t=>`<div class="empty">${emptyIcon}${t}</div>`;
 const geoKey=c=>c.id+'|'+c.address;
-const geoPending=()=>S.clients.filter(c=>c.address&&c.address.trim()&&(!hasLL(c)||c.geoAddr!==c.address)&&!M.geoTried.has(geoKey(c)));
+const geoPending=()=>S.clients.filter(c=>c.address&&c.address.trim()&&(!hasLL(c)||c.geoAddr!==c.address)&&!c.noGeo&&!M.geoTried.has(geoKey(c)));
 
 /* contenido de cada widget */
 const WB={
@@ -1547,7 +1564,7 @@ const WB={
     let h=`<div class="wkpi"><b class="num">${fmtEur(col)}</b><span>cobrado en ${esc(mLabel(m).toLowerCase())}</span></div>
     <div class="wtrack" role="img" aria-label="${goal?Math.round(col/goal*100)+' % del objetivo':'Sin objetivo'}"><i style="width:${pc}%"></i></div>
     <div class="wsub">${goal?`Objetivo <b>${fmtEur(goal)}</b> · faltan <b>${fmtEur(Math.max(0,goal-col))}</b>`:'Aún no hay objetivo para este mes'}</div>
-    <div class="wstats"><div><span class="label">Por cobrar</span><b class="num">${fmtEur(B.total)}</b></div><div><span class="label">Cuotas / mes</span><b class="num">${fmtEur(expected(m))}</b></div><div><span class="label">Activos</span><b class="num">${activeFor(m).length}</b></div></div>`;
+    <div class="wstats"><div><span class="label">Por cobrar</span><b class="num">${fmtEur(B.total)}</b></div><div><span class="label">Cuotas / mes</span><b class="num">${fmtEur(expected(m))}</b></div><div><span class="label">Previsto mes</span><b class="num">${fmtEur(col+B.total)}</b></div></div>`;
     h+=S.goalEdit?`<form id="goalForm" class="wform"><input id="goalInput" type="number" min="0" step="50" value="${goal||''}" placeholder="Objetivo en €" aria-label="Objetivo de ${esc(mLabel(m))} en euros" required><button class="btn primary sm" type="submit">Guardar</button><button class="btn ghost sm" type="button" data-act="goalCancel">Cancelar</button></form>`
       :`<button class="btn sm" data-act="goalEdit" ${ro()}>${goal?'Cambiar objetivo':'Fijar objetivo del mes'}</button>`;
     return h;
@@ -1615,10 +1632,10 @@ function hudHTML(){
   if(M.geoBusy)tools+=`<span class="mchip txt" role="status">Ubicando ${M.geoBusy.i} de ${M.geoBusy.n}…</span>`;
   else if(pend)tools+=`<button class="mchip hot" data-act="mGeo" ${ro()}>Ubicar ${pend} por su dirección</button>`;
   tools+=`<button class="mchip" data-act="mFit">Centrar</button><button class="mchip" data-act="mZoom" data-d="1" aria-label="Acercar">+</button><button class="mchip" data-act="mZoom" data-d="-1" aria-label="Alejar">−</button><span class="wmw"><button class="mchip" data-act="wMenu" aria-expanded="${M.wMenu}">Widgets</button>${menu}</span>`;
-  let h=`<div class="mbar" role="group" aria-label="Etapas visibles en el mapa">${chips||'<span class="mchip txt">Sin negocios todavía</span>'}</div><div class="mbar tools">${tools}</div>`;
+  let h=`<div class="hudbar" role="group" aria-label="Etapas visibles en el mapa">${chips||'<span class="mchip txt">Sin negocios todavía</span>'}</div><div class="hudbar tools">${tools}</div>`;
   const pc=M.placing&&clientById(M.placing);
-  if(pc)h+=`<div class="mbar mplace" role="status"><span>Toca el mapa donde está <b>${esc(pc.name)}</b></span><button class="mchip" data-act="mPlaceX">Cancelar</button></div>`;
-  else if(S.clients.length&&!S.clients.some(hasLL))h+=`<div class="mbar mplace"><span>Ningún negocio tiene ubicación todavía. ${pend?'Pulsa «Ubicar por su dirección»':'Añade la dirección en su ficha'} o colócalo a mano con «Ubicar» en el widget Negocios.</span></div>`;
+  if(pc)h+=`<form class="hudbar mplace" id="placeForm"><span>Ubicar <b>${esc(pc.name)}</b></span><input id="p_addr" name="addr" value="${esc(pc.address||'')}" placeholder="Escribe o pega la dirección" aria-label="Dirección de ${esc(pc.name)}" autocomplete="off" ${M.placeBusy?'disabled':''}><button class="mchip hot" type="submit" ${M.placeBusy?'disabled':''}>${M.placeBusy?'Buscando…':'Buscar'}</button><span>o toca el punto en el mapa</span><button class="mchip" type="button" data-act="mPlaceX">Cancelar</button></form>`;
+  else if(S.clients.length&&!S.clients.some(hasLL))h+=`<div class="hudbar mplace"><span>Ningún negocio tiene ubicación todavía. ${pend?'Pulsa «Ubicar por su dirección»':'Añade la dirección en su ficha'} o colócalo a mano con «Ubicar» en el widget Negocios.</span></div>`;
   return h;
 }
 function cardHTML(c){
@@ -1632,7 +1649,7 @@ function cardHTML(c){
   ${rows?`<dl class="mdl">${rows}</dl>`:`<div class="wsub">Sin web ni dirección todavía. Añádelas en «Editar».</div>`}
   ${last?`<div class="mnotes"><span class="label">Última nota</span><p>${esc(last.text)}</p></div>`:c.notes?`<div class="mnotes"><span class="label">Notas</span><p>${esc(c.notes)}</p></div>`:''}
   <form id="noteForm" class="mnote"><input name="note" id="n_text" placeholder="Anotar algo de este negocio" aria-label="Nueva nota" autocomplete="off" ${ro()}><button class="btn sm" type="submit" ${ro()}>Anotar</button></form>
-  <div class="wbtns"><button class="btn primary sm" data-act="edit" data-id="${c.id}">Abrir ficha</button><button class="btn sm" data-act="editClient" data-id="${c.id}">Editar</button><button class="btn sm" data-act="evNew" data-client="${c.id}" ${ro()}>+ Reunión</button><button class="btn ghost sm" data-act="mPlace" data-id="${c.id}" ${ro()}>${hasLL(c)?'Mover pin':'Ubicar en el mapa'}</button></div>`;
+  <div class="wbtns"><button class="btn primary sm" data-act="edit" data-id="${c.id}">Abrir ficha</button><button class="btn sm" data-act="editClient" data-id="${c.id}">Editar</button><button class="btn sm" data-act="evNew" data-client="${c.id}" ${ro()}>+ Reunión</button><button class="btn ghost sm" data-act="mPlace" data-id="${c.id}" ${ro()}>${hasLL(c)?'Mover pin':'Ubicar en el mapa'}</button>${hasLL(c)?`<button class="btn ghost sm" data-act="mUnpin" data-id="${c.id}" ${ro()}>Quitar del mapa</button>`:''}</div>`;
 }
 function setH(id,h){
   const el=document.getElementById(id);if(el._h===h)return;
@@ -1671,27 +1688,27 @@ function mapInit(){
   M.map.on('click',e=>{
     if(e.originalEvent&&e.originalEvent.target&&e.originalEvent.target.closest&&e.originalEvent.target.closest('.pin'))return;
     if(M.placing){const id=M.placing,c=clientById(id);M.placing=null;M.sel=id;S.clientId=id;
-      if(c)write(()=>S.db.doc('clients/'+id).update({lat:+e.lngLat.lat.toFixed(6),lng:+e.lngLat.lng.toFixed(6),geoAddr:c.address||'',updatedAt:new Date().toISOString()}),c.name+' colocado en el mapa');
+      if(c)write(()=>S.db.doc('clients/'+id).update({lat:+e.lngLat.lat.toFixed(6),lng:+e.lngLat.lng.toFixed(6),geoAddr:c.address||'',noGeo:false,updatedAt:new Date().toISOString()}),c.name+' colocado en el mapa');
       return renderMap()}
     if(M.sel){M.sel=null;renderMap()}
   });
   const z=()=>st.classList.toggle('zin',M.map.getZoom()>=13);M.map.on('zoom',z);z();
   if(window.ResizeObserver)new ResizeObserver(()=>M.map&&M.map.resize()).observe(st);
 }
-// Recolorea el estilo base a la paleta del mapa: asfalto oscuro, agua petróleo y vías claras.
+// Recolorea el estilo base a una paleta clara tipo plano: tierra arena, agua azul, parques verdes y autovías amarillas.
 function mapRestyle(){
   const m=M.map,P=(id,k,v)=>{try{m.setPaintProperty(id,k,v)}catch(_){}};
   ((m.getStyle()||{}).layers||[]).forEach(l=>{const id=l.id,sl=l['source-layer']||'';
-    if(l.type==='background')P(id,'background-color','#15181D');
+    if(l.type==='background')P(id,'background-color','#E6E2D8');
     else if(l.type==='fill'){
-      P(id,'fill-color',sl==='water'?'#0B2E40':sl==='building'?'#232830':sl==='park'||/wood|park|grass/.test(id)?'#18271D':sl==='aeroway'?'#262B33':/pier/.test(id)?'#15181D':'#1A1D23');
-      if(sl==='building')P(id,'fill-outline-color','#2D333C')}
-    else if(l.type==='line'){let c='#4A515C';
-      if(sl==='waterway')c='#0E3A52';else if(sl==='boundary')c='#69717D';else if(sl==='aeroway')c='#353B45';
-      else if(/rail/.test(id))c='#30353D';else if(/casing/.test(id))c='#0C0E12';
-      else if(/motorway/.test(id))c='#B9C0CA';else if(/major/.test(id))c='#7C8591';else if(/path|pier/.test(id))c='#353B44';
+      P(id,'fill-color',sl==='water'?'#8FC6E0':sl==='building'?'#D2CDC0':sl==='park'||/wood|park|grass/.test(id)?'#BFD9A8':sl==='aeroway'?'#D8D4CA':/pier/.test(id)?'#E6E2D8':/ice|glacier/.test(id)?'#F4F6F7':'#DEDACF');
+      if(sl==='building')P(id,'fill-outline-color','#BDB7A8')}
+    else if(l.type==='line'){let c='#FFFFFF';
+      if(sl==='waterway')c='#8FC6E0';else if(sl==='boundary')c='#9A9488';else if(sl==='aeroway')c='#C9C4B8';
+      else if(/rail/.test(id))c='#B4AEA0';else if(/casing/.test(id))c='#B9B3A4';
+      else if(/motorway/.test(id))c='#F5C04E';else if(/major/.test(id))c='#FFFFFF';else if(/path|pier/.test(id))c='#CFC9BB';
       P(id,'line-color',c)}
-    else if(l.type==='symbol'){P(id,'text-color',sl==='water_name'?'#4E8AA8':/place_(city|town|state|country)/.test(id)?'#E4E8EE':'#8E97A3');P(id,'text-halo-color','#0C0E12');P(id,'text-halo-width',1.2)}
+    else if(l.type==='symbol'){P(id,'text-color',sl==='water_name'?'#3C7D9E':/place_(city|town|state|country)/.test(id)?'#1F2329':'#565C66');P(id,'text-halo-color','#FFFFFF');P(id,'text-halo-width',1.4)}
   });
 }
 function syncPins(){
@@ -1735,9 +1752,8 @@ async function geoRun(){
   for(const c of list){
     M.geoBusy.i++;M.geoTried.add(geoKey(c));renderMap();
     try{
-      const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=es&q='+encodeURIComponent(c.address));
-      const j=r.ok?await r.json():[];
-      if(j&&j[0]&&isFinite(+j[0].lat)&&isFinite(+j[0].lon)){if(await write(()=>S.db.doc('clients/'+c.id).update({lat:+(+j[0].lat).toFixed(6),lng:+(+j[0].lon).toFixed(6),geoAddr:c.address})))ok++;else fail.push(c.name)}
+      const g=await geoFind(c.address);
+      if(g){if(await write(()=>S.db.doc('clients/'+c.id).update({lat:g.lat,lng:g.lng,geoAddr:c.address})))ok++;else fail.push(c.name)}
       else fail.push(c.name);
     }catch(_){fail.push(c.name)}
     if(M.geoBusy.i<list.length)await new Promise(r=>setTimeout(r,1100));
@@ -1756,7 +1772,8 @@ document.addEventListener('click',e=>{
   if(a==='mFit')return mapFit();
   if(a==='mZoom'){if(M.map)M.map.easeTo({zoom:M.map.getZoom()+(+el.dataset.d),duration:250});return}
   if(a==='mGeo')return geoRun();
-  if(a==='mPlace'){if(!M.map){toast('El mapa no está disponible ahora mismo');return}M.placing=id;M.sel=null;renderMap();return stageIntoView()}
+  if(a==='mPlace'){if(!M.map){toast('El mapa no está disponible ahora mismo');return}M.placing=id;M.sel=null;const hd=document.getElementById('mhud');hd._h=null;hd.innerHTML='';renderMap();stageIntoView();const i=document.getElementById('p_addr');if(i){i.focus({preventScroll:true});i.select()}return}
+  if(a==='mUnpin'){const c=clientById(id);if(c)write(()=>S.db.doc('clients/'+id).update({lat:null,lng:null,geoAddr:'',noGeo:true,updatedAt:new Date().toISOString()}),c.name+' quitado del mapa');return}
   if(a==='mPlaceX'){M.placing=null;return renderMap()}
   if(a==='wMenu'){M.wMenu=!M.wMenu;return renderMap()}
   if(a==='wCol'){if(L.col[w])delete L.col[w];else L.col[w]=true;saveL();return renderMap()}
@@ -1765,9 +1782,22 @@ document.addEventListener('click',e=>{
   if(a==='wReset'){L=normL(WDEF);saveL();return renderMap()}
   if(a==='goTab'){S.tab=el.dataset.tab;render();return window.scrollTo(0,0)}
 });
+async function geoFind(q){const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=es&q='+encodeURIComponent(q));const j=r.ok?await r.json():[];return j&&j[0]&&isFinite(+j[0].lat)&&isFinite(+j[0].lon)?{lat:+(+j[0].lat).toFixed(6),lng:+(+j[0].lon).toFixed(6)}:null}
+document.addEventListener('submit',async e=>{
+  if(e.target.id!=='placeForm')return;e.preventDefault();
+  const id=M.placing,c=clientById(id),q=(e.target.elements.addr.value||'').trim();if(!c||M.placeBusy)return;
+  if(!q){toast('Escribe o pega la dirección, o toca el punto en el mapa');return}
+  M.placeBusy=true;renderMap();let g=null;try{g=await geoFind(q)}catch(_){}
+  M.placeBusy=false;
+  if(!g){renderMap();toast('No encuentro esa dirección. Prueba con calle, número y ciudad, o toca el punto en el mapa.');const i=document.getElementById('p_addr');if(i)i.focus();return}
+  if(M.placing!==id)return renderMap();
+  M.placing=null;
+  if(await write(()=>S.db.doc('clients/'+id).update({address:q,lat:g.lat,lng:g.lng,geoAddr:q,noGeo:false,updatedAt:new Date().toISOString()}),c.name+' ubicado en el mapa')){M.sel=id;S.clientId=id;renderMap();if(M.map)M.map.easeTo({center:[g.lng,g.lat],zoom:15,offset:[0,isDesk()?-90:0],duration:700})}
+  else renderMap();
+});
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape'||S.tab!=='mapa'||document.getElementById('modalRoot').innerHTML)return;
-  if(M.placing){M.placing=null;renderMap()}else if(M.wMenu){M.wMenu=false;renderMap()}else if(M.sel&&!/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)){M.sel=null;renderMap()}
+  if(M.placing){M.placing=null;renderMap()}else if(M.wMenu){M.wMenu=false;renderMap()}else if(M.sel&&!/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName||'')){M.sel=null;renderMap()}
 });
 /* arrastrar widgets entre la zona izquierda y la derecha */
 (function(){
